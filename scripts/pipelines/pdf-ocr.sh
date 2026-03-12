@@ -8,6 +8,8 @@ OUTPUT_DIR="${JOB_ROOT}/output"
 LOG_FILE="${JOB_ROOT}/log.txt"
 STATUS_FILE="${JOB_ROOT}/status"
 
+OCR_LANG="${OCR_LANG:-eng}"
+
 log() {
     printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "${LOG_FILE}"
 }
@@ -21,13 +23,14 @@ fail() {
 echo "running" > "${STATUS_FILE}"
 
 command -v pdftoppm >/dev/null 2>&1 || fail "pdftoppm not found"
-command -v tesseract >/dev/null 2>&1 || fail "tesseract not found"
+[[ -x /toolbox/app/bin/ocr ]] || fail "ocr command not found or not executable"
 
 PDF_FILE="$(find "${INPUT_DIR}" -maxdepth 1 -type f -name '*.pdf' | head -n1 || true)"
 [[ -n "${PDF_FILE}" ]] || fail "no PDF found in input"
 
 log "Starting pdf-ocr pipeline"
 log "PDF file: ${PDF_FILE}"
+log "OCR language: ${OCR_LANG}"
 
 pdftoppm "${PDF_FILE}" "${WORK_DIR}/page" -png
 log "PDF converted to PNG pages"
@@ -36,7 +39,7 @@ shopt -s nullglob
 for img in "${WORK_DIR}"/page-*.png; do
     base="$(basename "${img}" .png)"
     log "Running OCR for ${base}.png"
-    tesseract "${img}" "${WORK_DIR}/${base}" -l eng
+    /toolbox/app/bin/ocr -l "${OCR_LANG}" -o "${WORK_DIR}/${base}.txt" "${img}" >> "${LOG_FILE}" 2>&1
 done
 
 cat "${WORK_DIR}"/page-*.txt > "${OUTPUT_DIR}/text.txt"
