@@ -8,6 +8,8 @@ services:
     stdin_open: true
     tty: true
     user: "1000:1000"
+    env_file:
+      - ../.env
     volumes:
       - /srv/toolbox/app:/toolbox/app
       - /srv/toolbox/jobs:/toolbox/jobs
