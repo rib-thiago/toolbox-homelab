@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+
+# Editor / OS
+.DS_Store
+*.swp
+*.swo
+
+# Runtime data
+jobs/
+input/
+work/
+output/
+logs/
+tmp/
+cache/
+
+# Models / large data
+models/
+*.model
+*.bin
+
+# Local env
+.env
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

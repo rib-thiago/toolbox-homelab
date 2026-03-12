@@ -1,0 +1,20 @@
+services:
+  toolbox:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: toolbox
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    volumes:
+      - /srv/toolbox/app:/toolbox/app
+      - /srv/toolbox/jobs:/toolbox/jobs
+      - /srv/toolbox/models:/toolbox/models
+      - /srv/toolbox/shared:/toolbox/shared
+    networks:
+      - lab_net
+
+networks:
+  lab_net:
+    external: true

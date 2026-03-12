@@ -1,0 +1,9 @@
+spacy
+nltk
+pillow
+pytesseract
+pdf2image
+pypdf
+python-magic
+rich
+typer
