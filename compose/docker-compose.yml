@@ -13,6 +13,7 @@ services:
       - /srv/toolbox/jobs:/toolbox/jobs
       - /srv/toolbox/models:/toolbox/models
       - /srv/toolbox/shared:/toolbox/shared
+      - /srv/toolbox/secrets:/toolbox/secrets:ro
     networks:
       - lab_net
 

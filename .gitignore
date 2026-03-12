@@ -27,6 +27,7 @@ models/
 
 # Local env
 .env
+.env.local
 
 # Build artifacts
 dist/
