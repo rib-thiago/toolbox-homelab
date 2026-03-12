@@ -1,0 +1,62 @@
+.TH OCR 1 "2026-03-12" "toolbox" "Toolbox Commands"
+
+.SH NAME
+ocr \- perform optical character recognition on an image
+
+.SH SYNOPSIS
+.B ocr
+.RB [ \-l
+.IR LANG ]
+.RB [ \-o
+.IR FILE ]
+.IR IMAGE
+
+.SH DESCRIPTION
+The
+.B ocr
+command extracts text from an image using Tesseract OCR.
+
+The input image can be any format supported by Tesseract
+such as PNG, JPEG, or TIFF.
+
+If no output file is specified, the recognized text is written to stdout.
+
+.SH OPTIONS
+
+.TP
+.B \-l LANG
+Specify the OCR language (default: eng).
+
+.TP
+.B \-o FILE
+Write OCR output to FILE instead of stdout.
+
+.TP
+.B \-h
+Display help information.
+
+.SH EXAMPLES
+
+Extract text from an image:
+
+.EX
+ocr image.png
+.EE
+
+Extract Russian text:
+
+.EX
+ocr -l rus newspaper.png
+.EE
+
+Save output to file:
+
+.EX
+ocr -l rus -o result.txt page.png
+.EE
+
+.SH AUTHOR
+Thiago Ribeiro
+
+.SH SEE ALSO
+.BR tesseract (1)

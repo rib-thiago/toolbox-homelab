@@ -1,0 +1,51 @@
+.TH RUN-JOB 1 "2026-03-12" "toolbox" "Toolbox Commands"
+
+.SH NAME
+run-job \- execute a toolbox pipeline job
+
+.SH SYNOPSIS
+.B run-job
+.IR PIPELINE
+.IR INPUT
+
+.SH DESCRIPTION
+The
+.B run-job
+command executes a pipeline defined in the toolbox.
+
+A new job directory is created under:
+
+.EX
+/srv/toolbox/jobs/
+.EE
+
+Each job contains the following structure:
+
+.EX
+input/
+work/
+output/
+log.txt
+status
+meta.env
+.EE
+
+The pipeline processes the input and writes intermediate
+and final results to these directories.
+
+.SH EXAMPLES
+
+Run PDF OCR pipeline:
+
+.EX
+run-job pdf-ocr document.pdf
+.EE
+
+.SH FILES
+
+.TP
+.B /srv/toolbox/jobs
+Directory containing all executed jobs.
+
+.SH AUTHOR
+Thiago Ribeiro
