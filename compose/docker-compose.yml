@@ -7,6 +7,7 @@ services:
     restart: unless-stopped
     stdin_open: true
     tty: true
+    user: "1000:1000"
     volumes:
       - /srv/toolbox/app:/toolbox/app
       - /srv/toolbox/jobs:/toolbox/jobs
