@@ -9,9 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
     ghostscript \
+    groff \
     imagemagick \
     libimage-exiftool-perl \
     libmagic1 \
+    man-db \
     poppler-utils \
     tesseract-ocr \
     tesseract-ocr-eng \
