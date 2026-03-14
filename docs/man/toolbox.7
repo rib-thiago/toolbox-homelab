@@ -1,0 +1,167 @@
+.TH TOOLBOX 7 "2026-03-14" "Toolbox" "Visão Geral da Toolbox"
+
+.SH NAME
+toolbox \- visão geral, arquitetura e convenções da toolbox do homelab
+
+.SH DESCRIPTION
+A toolbox é um subsistema do homelab que oferece um ambiente remoto
+especializado para processamento de documentos, imagens, texto e mídia,
+seguindo a filosofia Unix de ferramentas pequenas, especializadas
+e combináveis.
+
+Ela foi concebida para funcionar como uma estação Unix remota,
+acessível principalmente por terminal, permitindo executar tarefas
+pesadas sem poluir o ambiente principal de trabalho.
+
+.SH FILOSOFIA
+A toolbox segue alguns princípios centrais:
+
+.TP
+.B Ferramentas pequenas
+Cada comando deve fazer uma coisa bem feita.
+
+.TP
+.B Combinabilidade
+Comandos devem poder ser encadeados em pipelines.
+
+.TP
+.B Transparência
+O usuário deve conseguir entender como a execução acontece.
+
+.TP
+.B Reprodutibilidade
+Pipelines longos ou compostos devem poder ser executados como jobs,
+com diretório próprio, logs e estado persistente.
+
+.SH ARQUITETURA DA CLI
+A organização da CLI segue a convenção abaixo.
+
+.TP
+.B bin/
+Contém os comandos públicos da toolbox, isto é, tudo que o usuário
+executa diretamente.
+
+.TP
+.B scripts/helpers/
+Contém a implementação real das ferramentas atômicas.
+
+.TP
+.B scripts/pipelines/
+Contém a implementação real dos pipelines compostos.
+
+.TP
+.B scripts/lib/
+Contém funções compartilhadas entre helpers, pipelines e comandos.
+
+.TP
+.B run-job
+Executor de pipelines estruturados, responsável por criar diretórios
+de job, registrar logs, armazenar estado e consolidar saídas.
+
+.SH TIPOS DE COMANDO
+Os comandos da toolbox se dividem em três grupos principais.
+
+.TP
+.B Ferramentas atômicas
+Executam uma função simples e direta.
+
+Exemplos:
+.BR ocr (1),
+.BR translate (1),
+.BR pdf-images (1),
+.BR pdf-text (1),
+.BR img-convert (1),
+.BR exif (1).
+
+.TP
+.B Pipelines compostos
+Representam fluxos maiores de processamento, normalmente executados
+via
+.BR run-job (1).
+
+Exemplo:
+.BR pdf-ocr (1).
+
+.TP
+.B Infraestrutura de execução
+Comandos responsáveis por orquestrar jobs e execução estruturada.
+
+Exemplo:
+.BR run-job (1).
+
+.SH ESTRUTURA DE JOBS
+Quando um pipeline é executado via
+.BR run-job (1),
+é criado um diretório em
+.B /toolbox/jobs/<job-id>/,
+com a seguinte estrutura típica:
+
+.PP
+input/
+.br
+work/
+.br
+output/
+.br
+log.txt
+.br
+status
+.br
+meta.env
+
+.SH ESTRUTURA DE DIRETÓRIOS
+A toolbox normalmente utiliza os seguintes diretórios montados no container:
+
+.TP
+.B /toolbox/app
+Código versionado da toolbox.
+
+.TP
+.B /toolbox/jobs
+Histórico de execuções estruturadas.
+
+.TP
+.B /toolbox/models
+Modelos e artefatos grandes, como recursos de NLP.
+
+.TP
+.B /toolbox/shared
+Área compartilhada para arquivos de entrada e saída.
+
+.TP
+.B /toolbox/secrets
+Credenciais e segredos montados em modo somente leitura.
+
+.SH EXEMPLOS
+Extrair texto de uma imagem:
+.PP
+.B ocr imagem.png
+
+Extrair texto de um PDF textual:
+.PP
+.B pdf-text documento.pdf
+
+Executar OCR em um PDF escaneado:
+.PP
+.B pdf-ocr documento.pdf
+
+Converter uma imagem:
+.PP
+.B img-convert input.tiff output.png
+
+Inspecionar metadados de imagem:
+.PP
+.B exif foto.jpg
+
+.SH SEE ALSO
+.BR ocr (1),
+.BR translate (1),
+.BR pdf-images (1),
+.BR pdf-text (1),
+.BR img-convert (1),
+.BR exif (1),
+.BR pdf-ocr (1),
+.BR run-job (1)
+
+.SH AUTHOR
+Thiago

@@ -1,0 +1,97 @@
+.TH PDF-OCR 1 "2026-03-14" "Toolbox" "Comandos do Usuário"
+
+.SH NAME
+pdf-ocr \- executa OCR em um PDF por meio do sistema de jobs da toolbox
+
+.SH SYNOPSIS
+.B pdf-ocr
+PDF
+
+.SH DESCRIPTION
+O comando
+.B pdf-ocr
+executa um pipeline estruturado de OCR sobre um arquivo PDF.
+
+Ele é um comando público da toolbox que delega sua execução ao
+.BR run-job (1),
+utilizando o pipeline
+.B pdf-ocr.
+
+O fluxo interno do pipeline é:
+
+.PP
+PDF
+.br
+↓
+.br
+.BR pdf-images (1)
+.br
+↓
+.br
+.BR ocr (1)
+.br
+↓
+.br
+concatenação dos textos extraídos
+.br
+↓
+.br
+.B text.txt
+
+.PP
+O resultado final é armazenado no diretório do job, dentro de
+.B output/text.txt.
+
+Este comando deve ser usado principalmente para PDFs escaneados,
+fac-símiles e documentos compostos por imagens.
+Para PDFs que já possuem camada textual pesquisável,
+deve-se preferir
+.BR pdf-text (1).
+
+.SH OPTIONS
+Atualmente, o comando aceita o caminho do PDF de entrada.
+Opções adicionais podem ser encaminhadas futuramente ao pipeline.
+
+.SH EXAMPLES
+Executar OCR em um PDF:
+.PP
+.B pdf-ocr documento.pdf
+
+Executar o pipeline explicitamente via run-job:
+.PP
+.B run-job pdf-ocr documento.pdf
+
+.SH FILES
+.TP
+.B /toolbox/jobs/<job-id>/
+Diretório do job gerado pela execução.
+
+.TP
+.B /toolbox/jobs/<job-id>/input/
+Contém o PDF de entrada copiado para o job.
+
+.TP
+.B /toolbox/jobs/<job-id>/work/
+Contém imagens intermediárias e arquivos de texto gerados por página.
+
+.TP
+.B /toolbox/jobs/<job-id>/output/text.txt
+Contém o texto final consolidado.
+
+.TP
+.B /toolbox/jobs/<job-id>/log.txt
+Log completo da execução.
+
+.TP
+.B /toolbox/jobs/<job-id>/status
+Estado final da execução: running, success ou failed.
+
+.SH SEE ALSO
+.BR pdf-images (1),
+.BR pdf-text (1),
+.BR ocr (1),
+.BR run-job (1),
+.BR toolbox (7)
+
+.SH AUTHOR
+Thiago
