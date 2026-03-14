@@ -5,17 +5,19 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
+    ca-certificates \
     curl \
     git \
-    imagemagick \
-    poppler-utils \
     ghostscript \
+    imagemagick \
+    libimage-exiftool-perl \
+    libmagic1 \
+    poppler-utils \
     tesseract-ocr \
     tesseract-ocr-eng \
     tesseract-ocr-por \
     tesseract-ocr-rus \
-    libmagic1 \
-    ca-certificates \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /toolbox/app
