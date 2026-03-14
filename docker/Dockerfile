@@ -2,6 +2,8 @@ FROM python:3.11-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV PATH="/toolbox/app/bin:${PATH}"
+ENV MANPATH="/toolbox/app/docs:/usr/share/man"
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
