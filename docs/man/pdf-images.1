@@ -1,0 +1,69 @@
+.TH PDF-IMAGES 1 "2026-03-14" "Toolbox" "Comandos do Usuário"
+
+.SH NAME
+pdf-images \- extrai páginas de um PDF como imagens
+
+.SH SYNOPSIS
+.B pdf-images
+[\fB\-f\fR FORMAT] [\fB\-o\fR DIR] [\fB\-p\fR PREFIX] PDF
+
+.SH DESCRIPTION
+O comando
+.B pdf-images
+extrai as páginas de um arquivo PDF e gera uma imagem para cada página.
+
+Por padrão, as imagens são geradas em formato PNG, no diretório atual,
+usando como prefixo o nome base do arquivo PDF.
+
+Este comando é uma ferramenta atômica da toolbox e pode ser usada
+isoladamente ou como etapa em pipelines de processamento documental.
+
+.SH OPTIONS
+.TP
+.B \-f FORMAT
+Define o formato de saída das imagens. Valores suportados:
+.B png
+e
+.B jpeg.
+O padrão é
+.B png.
+
+.TP
+.B \-o DIR
+Define o diretório de saída das imagens.
+O padrão é o diretório atual.
+
+.TP
+.B \-p PREFIX
+Define o prefixo usado nos nomes dos arquivos gerados.
+O padrão é o nome base do arquivo PDF.
+
+.TP
+.B \-h
+Mostra a ajuda do comando.
+
+.SH EXAMPLES
+Extrair páginas como PNG no diretório atual:
+.PP
+.B pdf-images documento.pdf
+
+Extrair páginas como JPEG:
+.PP
+.B pdf-images -f jpeg documento.pdf
+
+Extrair imagens para diretório específico:
+.PP
+.B pdf-images -o /toolbox/shared/out documento.pdf
+
+Usar prefixo customizado:
+.PP
+.B pdf-images -p pagina documento.pdf
+
+.SH SEE ALSO
+.BR pdf-text (1),
+.BR pdf-ocr (1),
+.BR ocr (1),
+.BR toolbox (7)
+
+.SH AUTHOR
+Thiago

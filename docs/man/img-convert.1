@@ -1,0 +1,55 @@
+.TH IMG-CONVERT 1 "2026-03-14" "Toolbox" "Comandos do Usuário"
+
+.SH NAME
+img-convert \- converte e redimensiona imagens usando ImageMagick
+
+.SH SYNOPSIS
+.B img-convert
+[\fB\-resize\fR SIZE] INPUT OUTPUT
+
+.SH DESCRIPTION
+O comando
+.B img-convert
+converte uma imagem de entrada para outro arquivo de saída,
+permitindo também redimensionamento opcional.
+
+Ele é útil para preparar imagens antes de OCR, transformar formatos
+e reduzir o tamanho de arquivos de imagem.
+
+A implementação usa o ImageMagick como backend.
+
+.SH OPTIONS
+.TP
+.B \-resize SIZE
+Redimensiona a imagem antes de gravar a saída.
+
+Exemplos de valores:
+.B 50%
+ou
+.BR 1200x1600 .
+
+.TP
+.B \-h
+Mostra a ajuda do comando.
+
+.SH EXAMPLES
+Converter TIFF para PNG:
+.PP
+.B img-convert input.tiff output.png
+
+Reduzir uma imagem para 50%:
+.PP
+.B img-convert -resize 50% input.jpg output.jpg
+
+Redimensionar para dimensões específicas:
+.PP
+.B img-convert -resize 1200x1600 input.png output.png
+
+.SH SEE ALSO
+.BR exif (1),
+.BR ocr (1),
+.BR pdf-images (1),
+.BR toolbox (7)
+
+.SH AUTHOR
+Thiago

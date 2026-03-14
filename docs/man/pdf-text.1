@@ -1,0 +1,55 @@
+.TH PDF-TEXT 1 "2026-03-14" "Toolbox" "Comandos do Usuário"
+
+.SH NAME
+pdf-text \- extrai texto já existente de um PDF
+
+.SH SYNOPSIS
+.B pdf-text
+[\fB\-o\fR FILE] PDF
+
+.SH DESCRIPTION
+O comando
+.B pdf-text
+extrai diretamente a camada textual de um arquivo PDF.
+
+Ele deve ser usado quando o PDF já contém texto pesquisável,
+como em documentos digitais exportados de editores, navegadores,
+sistemas ou artigos acadêmicos.
+
+Este comando não realiza OCR.
+Para PDFs escaneados ou compostos apenas por imagens,
+deve-se usar
+.BR pdf-ocr (1).
+
+Por padrão, o texto extraído é enviado para a saída padrão.
+
+.SH OPTIONS
+.TP
+.B \-o FILE
+Escreve o texto extraído no arquivo especificado em vez de enviá-lo para a saída padrão.
+
+.TP
+.B \-h
+Mostra a ajuda do comando.
+
+.SH EXAMPLES
+Extrair texto para a saída padrão:
+.PP
+.B pdf-text documento.pdf
+
+Extrair texto redirecionando para arquivo:
+.PP
+.B pdf-text documento.pdf > texto.txt
+
+Extrair texto diretamente para arquivo:
+.PP
+.B pdf-text -o texto.txt documento.pdf
+
+.SH SEE ALSO
+.BR pdf-images (1),
+.BR pdf-ocr (1),
+.BR translate (1),
+.BR toolbox (7)
+
+.SH AUTHOR
+Thiago

@@ -1,0 +1,69 @@
+.TH EXIF 1 "2026-03-14" "Toolbox" "Comandos do Usuário"
+
+.SH NAME
+exif \- inspeciona e remove metadados de imagens
+
+.SH SYNOPSIS
+.B exif
+IMAGE
+
+.PP
+.B exif
+\fB\-tags\fR IMAGE
+
+.PP
+.B exif
+\fB\-remove-all\fR INPUT OUTPUT
+
+.SH DESCRIPTION
+O comando
+.B exif
+permite inspecionar metadados de arquivos de imagem e também gerar
+uma cópia limpa com os metadados removidos.
+
+No modo padrão, o comando mostra todos os metadados retornados pelo
+.B exiftool.
+
+No modo
+.B \-tags,
+apenas um subconjunto de campos mais comuns é exibido.
+
+No modo
+.B \-remove-all,
+uma cópia do arquivo de entrada é criada no caminho de saída
+especificado, com os metadados removidos.
+
+.SH OPTIONS
+.TP
+.B \-tags
+Exibe apenas um conjunto resumido de tags comuns.
+
+.TP
+.B \-remove-all
+Remove todos os metadados do arquivo de entrada e grava o resultado
+em um novo arquivo de saída.
+
+.TP
+.B \-h
+Mostra a ajuda do comando.
+
+.SH EXAMPLES
+Mostrar todos os metadados:
+.PP
+.B exif foto.jpg
+
+Mostrar apenas as principais tags:
+.PP
+.B exif -tags foto.jpg
+
+Gerar uma cópia limpa sem metadados:
+.PP
+.B exif -remove-all foto.jpg foto-clean.jpg
+
+.SH SEE ALSO
+.BR img-convert (1),
+.BR pdf-images (1),
+.BR toolbox (7)
+
+.SH AUTHOR
+Thiago
