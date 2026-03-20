@@ -1,4 +1,4 @@
-.TH RUN-JOB 1 "2026-03-12" "toolbox" "Toolbox Commands"
+.TH RUN-JOB 1 "2026-03-17" "toolbox" "Toolbox Commands"
 
 .SH NAME
 run-job \- execute a toolbox pipeline job
@@ -7,6 +7,7 @@ run-job \- execute a toolbox pipeline job
 .B run-job
 .IR PIPELINE
 .IR INPUT
+.RI [ --env " NAME=VALUE " ...]
 
 .SH DESCRIPTION
 The
@@ -16,7 +17,7 @@ command executes a pipeline defined in the toolbox.
 A new job directory is created under:
 
 .EX
-/srv/toolbox/jobs/
+/toolbox/jobs/
 .EE
 
 Each job contains the following structure:
@@ -30,22 +31,35 @@ status
 meta.env
 .EE
 
-The pipeline processes the input and writes intermediate
-and final results to these directories.
+Optional
+.B --env
+arguments allow environment overrides for a specific job execution.
 
 .SH EXAMPLES
 
 Run PDF OCR pipeline:
 
 .EX
-run-job pdf-ocr document.pdf
+run-job pdf-ocr /toolbox/shared/document.pdf
+.EE
+
+Run image OCR and translation with explicit language overrides:
+
+.EX
+run-job image-ocr-translate /toolbox/shared/page.png \\
+  --env TESSERACT_OCR_LANG=por \\
+  --env GOOGLE_TRANSLATE_SOURCE_LANG=pt \\
+  --env GOOGLE_TRANSLATE_TARGET_LANG=en
 .EE
 
 .SH FILES
 
 .TP
-.B /srv/toolbox/jobs
+.B /toolbox/jobs
 Directory containing all executed jobs.
+
+.SH SEE ALSO
+.BR job-inspect (1)
 
 .SH AUTHOR
 Thiago Ribeiro
