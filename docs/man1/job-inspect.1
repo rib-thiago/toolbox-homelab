@@ -1,0 +1,64 @@
+.TH JOB-INSPECT 1 "2026-03-17" "toolbox" "Toolbox Commands"
+
+.SH NAME
+job-inspect \- inspect a toolbox job
+
+.SH SYNOPSIS
+.B job-inspect
+.IR TARGET
+
+.SH DESCRIPTION
+The
+.B job-inspect
+command inspects a toolbox job and prints:
+
+.EX
+job directory
+status
+first 200 lines of log.txt
+output files
+.EE
+
+The
+.I TARGET
+argument may be either a job type, such as
+.B pdf-ocr
+or
+.B image-ocr-translate,
+or a full job directory path.
+
+When a job type is provided, the most recent matching job under
+.B /srv/toolbox/jobs
+is selected.
+
+.SH EXAMPLES
+
+Inspect the latest PDF OCR job:
+
+.EX
+job-inspect pdf-ocr
+.EE
+
+Inspect the latest image OCR translation job:
+
+.EX
+job-inspect image-ocr-translate
+.EE
+
+Inspect a specific job directory:
+
+.EX
+job-inspect /srv/toolbox/jobs/2026-03-17-234942-image-ocr-translate
+.EE
+
+.SH FILES
+
+.TP
+.B /srv/toolbox/jobs
+Directory containing executed toolbox jobs.
+
+.SH SEE ALSO
+.BR run-job (1)
+
+.SH AUTHOR
+Thiago Ribeiro
