@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SOURCE_LANG="auto"
+SOURCE_LANG="${GOOGLE_TRANSLATE_SOURCE_LANG:-auto}"
 TARGET_LANG="${GOOGLE_TRANSLATE_TARGET_LANG:-en}"
 
 usage() {
@@ -9,7 +9,7 @@ usage() {
 Usage: translate [-s SOURCE] [-t TARGET] "TEXT"
 
 Options:
-  -s LANG   source language (default: auto)
+  -s LANG   source language (default from env, fallback: auto)
   -t LANG   target language (default from env, fallback: en)
   -h        show help
 
