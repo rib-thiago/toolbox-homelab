@@ -1,4 +1,4 @@
-.TH TRANSLATE 1 "2026-03-12" "toolbox" "Toolbox Commands"
+.TH TRANSLATE 1 "2026-03-17" "toolbox" "Toolbox Commands"
 
 .SH NAME
 translate \- translate text using Google Cloud Translation
@@ -19,14 +19,23 @@ command translates text using the Google Cloud Translation API.
 Authentication is performed using the environment variable
 .BR GOOGLE_APPLICATION_CREDENTIALS .
 
-The default target language is controlled by the environment variable
-.BR GOOGLE_TRANSLATE_TARGET_LANG .
+The default source language is controlled by
+.BR GOOGLE_TRANSLATE_SOURCE_LANG ,
+falling back to
+.B auto
+when unset.
+
+The default target language is controlled by
+.BR GOOGLE_TRANSLATE_TARGET_LANG ,
+falling back to
+.B en
+when unset.
 
 .SH OPTIONS
 
 .TP
 .B \-s LANG
-Source language code (default: auto).
+Source language code.
 
 .TP
 .B \-t LANG
@@ -38,16 +47,22 @@ Display help information.
 
 .SH EXAMPLES
 
-Translate Russian text:
+Translate English text to Portuguese:
+
+.EX
+translate -s en -t pt "hello world"
+.EE
+
+Translate Portuguese text to English:
+
+.EX
+translate -s pt -t en "olá mundo"
+.EE
+
+Translate Russian text to English:
 
 .EX
 translate -s ru -t en "Привет мир"
-.EE
-
-Translate to Portuguese:
-
-.EX
-translate -s ru -t pt "Привет мир"
 .EE
 
 .SH ENVIRONMENT
@@ -55,6 +70,10 @@ translate -s ru -t pt "Привет мир"
 .TP
 .B GOOGLE_APPLICATION_CREDENTIALS
 Path to the Google Cloud service account JSON file.
+
+.TP
+.B GOOGLE_TRANSLATE_SOURCE_LANG
+Default source language.
 
 .TP
 .B GOOGLE_TRANSLATE_TARGET_LANG
