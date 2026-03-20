@@ -8,14 +8,16 @@ OUTPUT_DIR="${JOB_ROOT}/output"
 LOG_FILE="${JOB_ROOT}/log.txt"
 STATUS_FILE="${JOB_ROOT}/status"
 
-OCR_LANG="${OCR_LANG:-eng}"
+TESSERACT_OCR_LANG="${TESSERACT_OCR_LANG:-eng}"
 
 log() {
-    printf '[%s] %s\n' "$(date '+%F %T')" "$*" | tee -a "${LOG_FILE}"
+    local level="$1"
+    shift
+    printf '[%s] [%s] %s\n' "$(date '+%F %T')" "${level}" "$*"
 }
 
 fail() {
-    log "ERROR: $*"
+    log "ERROR" "$*"
     echo "failed" > "${STATUS_FILE}"
     exit 1
 }
@@ -28,28 +30,34 @@ echo "running" > "${STATUS_FILE}"
 PDF_FILE="$(find "${INPUT_DIR}" -maxdepth 1 -type f -name '*.pdf' | head -n1 || true)"
 [[ -n "${PDF_FILE}" ]] || fail "no PDF found in input"
 
-log "Starting pdf-ocr pipeline"
-log "PDF file: ${PDF_FILE}"
-log "OCR language: ${OCR_LANG}"
+log "INFO" "Starting pdf-ocr pipeline"
+log "INFO" "PDF file: ${PDF_FILE}"
+log "INFO" "OCR language: ${TESSERACT_OCR_LANG}"
 
-log "Extracting pages with pdf-images"
-/toolbox/app/bin/pdf-images -o "${WORK_DIR}" "${PDF_FILE}" >> "${LOG_FILE}" 2>&1
-log "PDF pages extracted to ${WORK_DIR}"
+log "STEP" "Extracting pages with pdf-images"
+/toolbox/app/bin/pdf-images -o "${WORK_DIR}" "${PDF_FILE}"
+log "STEP" "PDF pages extracted to ${WORK_DIR}"
 
 shopt -s nullglob
 for img in "${WORK_DIR}"/*.png "${WORK_DIR}"/*.jpg; do
     [[ -f "${img}" ]] || continue
     base="$(basename "${img}")"
     stem="${base%.*}"
-    log "Running OCR for ${base}"
-    /toolbox/app/bin/ocr -l "${OCR_LANG}" -o "${WORK_DIR}/${stem}.txt" "${img}" >> "${LOG_FILE}" 2>&1
+    log "STEP" "Running OCR for ${base}"
+    /toolbox/app/bin/ocr -l "${TESSERACT_OCR_LANG}" -o "${WORK_DIR}/${stem}.txt" "${img}"
 done
 
 TXT_COUNT="$(find "${WORK_DIR}" -maxdepth 1 -type f -name '*.txt' | wc -l)"
 [[ "${TXT_COUNT}" -gt 0 ]] || fail "no OCR text files were generated"
 
-find "${WORK_DIR}" -maxdepth 1 -type f -name '*.txt' | sort | xargs cat > "${OUTPUT_DIR}/text.txt"
-log "Final text written to ${OUTPUT_DIR}/text.txt"
+: > "${OUTPUT_DIR}/text.txt"
+while IFS= read -r -d '' txt; do
+    cat "${txt}" >> "${OUTPUT_DIR}/text.txt"
+done < <(find "${WORK_DIR}" -maxdepth 1 -type f -name '*.txt' -print0 | sort -z)
+
+[[ -s "${OUTPUT_DIR}/text.txt" ]] || fail "final text output is empty"
+
+log "SUCCESS" "Final text written to ${OUTPUT_DIR}/text.txt"
 
 echo "success" > "${STATUS_FILE}"
-log "pdf-ocr completed successfully"
+log "SUCCESS" "pdf-ocr completed successfully"
