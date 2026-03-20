@@ -3,6 +3,26 @@ set -euo pipefail
 
 JOB_TYPE="${1:?missing job type}"
 INPUT_PATH="${2:?missing input path}"
+shift 2
+
+ENV_OVERRIDES=()
+
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        --env)
+            [[ "${2:-}" =~ ^[A-Za-z_][A-Za-z0-9_]*=.*$ ]] || {
+                echo "ERROR: invalid --env assignment: ${2:-<missing>}" >&2
+                exit 2
+            }
+            ENV_OVERRIDES+=("$2")
+            shift 2
+            ;;
+        *)
+            echo "ERROR: unknown argument: $1" >&2
+            exit 2
+            ;;
+    esac
+done
 
 BASE_DIR="/toolbox/jobs"
 STAMP="$(date +%Y-%m-%d-%H%M%S)"
@@ -23,21 +43,30 @@ JOB_OUTPUT_DIR=${JOB_ROOT}/output
 JOB_CREATED_AT=$(date --iso-8601=seconds)
 META
 
+if [[ "${#ENV_OVERRIDES[@]}" -gt 0 ]]; then
+    {
+        printf 'JOB_ENV_OVERRIDES='
+        printf '%s ' "${ENV_OVERRIDES[@]}"
+        printf '\n'
+        for item in "${ENV_OVERRIDES[@]}"; do
+            printf '%s\n' "$item"
+        done
+    } >> "${JOB_ROOT}/meta.env"
+fi
+
 echo "running" > "${JOB_ROOT}/status"
 
 PIPELINE="/toolbox/app/scripts/pipelines/${JOB_TYPE}.sh"
 
 if [[ ! -x "${PIPELINE}" ]]; then
-  echo "failed" > "${JOB_ROOT}/status"
-  echo "Pipeline not executable or not found: ${PIPELINE}" > "${JOB_ROOT}/log.txt"
-  exit 1
+    echo "failed" > "${JOB_ROOT}/status"
+    echo "Pipeline not executable or not found: ${PIPELINE}" > "${JOB_ROOT}/log.txt"
+    exit 1
 fi
 
-if "${PIPELINE}" "${JOB_ROOT}" > "${JOB_ROOT}/log.txt" 2>&1; then
-  echo "success" > "${JOB_ROOT}/status"
+if env "${ENV_OVERRIDES[@]}" "${PIPELINE}" "${JOB_ROOT}" > "${JOB_ROOT}/log.txt" 2>&1; then
+    echo "success" > "${JOB_ROOT}/status"
 else
-  echo "failed" > "${JOB_ROOT}/status"
-  exit 1
+    echo "failed" > "${JOB_ROOT}/status"
+    exit 1
 fi
-
-echo "${JOB_ROOT}"
