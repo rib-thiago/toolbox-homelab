@@ -1,6 +1,62 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+    cat <<EOF
+Usage: run-job PIPELINE INPUT [--env NAME=VALUE ...]
+
+Execute a toolbox pipeline job.
+
+Arguments:
+  PIPELINE              pipeline name, such as pdf-ocr or image-ocr-translate
+  INPUT                 input file path inside the container
+
+Options:
+  --env NAME=VALUE      override an environment variable for this job
+  -h, --help            show this help message
+
+Examples:
+  run-job pdf-ocr /toolbox/shared/test-samples/pdf-scanned/scanned-en.pdf
+
+  run-job image-ocr-translate /toolbox/shared/test-samples/images/ocr-pt.png \\
+    --env TESSERACT_OCR_LANG=por \\
+    --env GOOGLE_TRANSLATE_SOURCE_LANG=pt \\
+    --env GOOGLE_TRANSLATE_TARGET_LANG=en
+EOF
+}
+
+if [[ -t 1 ]]; then
+    BLUE=$'\033[34m'
+    GREEN=$'\033[32m'
+    RED=$'\033[31m'
+    BOLD=$'\033[1m'
+    RESET=$'\033[0m'
+else
+    BLUE=""
+    GREEN=""
+    RED=""
+    BOLD=""
+    RESET=""
+fi
+
+print_summary() {
+    local job_path="$1"
+    local job_status="$2"
+    local status_color="$GREEN"
+
+    if [[ "${job_status}" != "success" ]]; then
+        status_color="$RED"
+    fi
+
+    printf '%s[toolbox]%s job: %s\n' "${BLUE}" "${RESET}" "${job_path}"
+    printf '%s[toolbox]%s status: %s%s%s\n' "${BLUE}" "${RESET}" "${status_color}" "${job_status}" "${RESET}"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
 JOB_TYPE="${1:?missing job type}"
 INPUT_PATH="${2:?missing input path}"
 shift 2
@@ -16,6 +72,10 @@ while [[ "$#" -gt 0 ]]; do
             }
             ENV_OVERRIDES+=("$2")
             shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
             ;;
         *)
             echo "ERROR: unknown argument: $1" >&2
@@ -61,12 +121,15 @@ PIPELINE="/toolbox/app/scripts/pipelines/${JOB_TYPE}.sh"
 if [[ ! -x "${PIPELINE}" ]]; then
     echo "failed" > "${JOB_ROOT}/status"
     echo "Pipeline not executable or not found: ${PIPELINE}" > "${JOB_ROOT}/log.txt"
+    print_summary "${JOB_ROOT}" "failed"
     exit 1
 fi
 
 if env "${ENV_OVERRIDES[@]}" "${PIPELINE}" "${JOB_ROOT}" > "${JOB_ROOT}/log.txt" 2>&1; then
     echo "success" > "${JOB_ROOT}/status"
+    print_summary "${JOB_ROOT}" "success"
 else
     echo "failed" > "${JOB_ROOT}/status"
+    print_summary "${JOB_ROOT}" "failed"
     exit 1
 fi
