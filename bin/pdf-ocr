@@ -1,3 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
+usage() {
+    cat <<EOF
+Usage: pdf-ocr INPUT.pdf [--env NAME=VALUE ...]
+
+Run OCR on a scanned PDF through the toolbox job system.
+
+Arguments:
+  INPUT.pdf             PDF file path inside the container
+
+Options:
+  --env NAME=VALUE      override an environment variable for this job
+  -h, --help            show this help message
+
+Examples:
+  pdf-ocr /toolbox/shared/test-samples/pdf-scanned/scanned-en.pdf
+
+  pdf-ocr /toolbox/shared/test-samples/pdf-scanned/scanned-pt.pdf \\
+    --env TESSERACT_OCR_LANG=por
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
 exec /toolbox/app/bin/run-job pdf-ocr "$@"
