@@ -33,3 +33,8 @@ models/
 dist/
 build/
 *.egg-info/
+
+# Generated reports
+git-reports/
+reports/
+*.log
