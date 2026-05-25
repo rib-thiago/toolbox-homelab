@@ -38,3 +38,7 @@ build/
 git-reports/
 reports/
 *.log
+*.save
+*.save.*
+*.bak
+*~
