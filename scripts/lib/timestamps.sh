@@ -1,16 +1,15 @@
 #!/usr/bin/env bash
 set -u
 
-# Toolbox shared logging helpers.
+# Toolbox shared timestamp helpers.
 #
 # This file is intended to be sourced by Toolbox scripts.
 # It must not execute actions, print output, create files, or modify state when sourced.
 
-log() {
-  printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
+toolbox_timestamp() {
+  date '+%Y%m%d-%H%M%S'
 }
 
-fail() {
-  printf '[ERRO] %s\n' "$*" >&2
-  exit 1
+toolbox_now() {
+  date '+%Y-%m-%d %H:%M:%S'
 }
