@@ -12,12 +12,10 @@ source "$LIB_DIR/paths.sh"
 STAMP="$(toolbox_timestamp)"
 SHARED_DIR="$(toolbox_shared_dir)"
 
-STAGING_DIR="/srv/media/music-staging/reviewing"
-DEFAULT_ALBUM="$STAGING_DIR/[1971] Thembi"
-DEFAULT_MBID="34497839-9158-4c6f-8945-7f543276ea3e"
-
-ALBUM_DIR="${1:-$DEFAULT_ALBUM}"
-MBID="${2:-$DEFAULT_MBID}"
+ALBUM_DIR="${1:-}"
+MBID="${2:-}"
+EXPECTED_ARTIST="${3:-}"
+EXPECTED_ALBUM="${4:-}"
 
 ALBUM_NAME="$(basename "$ALBUM_DIR")"
 SAFE_ALBUM_NAME="$(printf '%s' "$ALBUM_NAME" | tr ' /[]()' '_______' | tr -cd '[:alnum:]_.-')"
@@ -65,10 +63,28 @@ write_step() {
   tsv_row "$step_id" "$phase" "$target" "$status" "$action" "$notes" >> "$TSV"
 }
 
+usage() {
+  cat <<'EOF'
+Usage:
+  plan-music-staging-beets-mbid-dry-run.sh <album_dir> <mbid> <expected_artist> <expected_album>
+
+Safety:
+  Plan only. Does not run Beets, write tags, copy files, move files or modify staging/library.
+EOF
+}
+
+validate_args() {
+  if [ -z "$ALBUM_DIR" ] || [ -z "$MBID" ] || [ -z "$EXPECTED_ARTIST" ] || [ -z "$EXPECTED_ALBUM" ]; then
+    usage >&2
+    fail "Missing required arguments."
+  fi
+}
+
 main() {
   local beets_command
 
   require_lib_contract
+  validate_args
 
   mkdir -p "$REPORT_DIR" "$PLAN_DIR"
 
@@ -93,7 +109,7 @@ main() {
     "notes" > "$TSV"
 
   write_step "PLAN-001" "album" "$ALBUM_DIR" "OK" "selected album" "$ALBUM_NAME"
-  write_step "PLAN-002" "mbid" "$MBID" "OK" "selected MusicBrainz release candidate" "best candidate from release diagnosis"
+  write_step "PLAN-002" "mbid" "$MBID" "OK" "selected MusicBrainz release candidate" "expected_artist=$EXPECTED_ARTIST expected_album=$EXPECTED_ALBUM"
   write_step "PLAN-003" "safety" "$BEETS_SANDBOX_ROOT" "OK" "sandbox dry-run only" "use -C -W; config has copy/write/move disabled"
   write_step "PLAN-004" "command" "$ALBUM_DIR" "PLANNED" "run beet import -C -W" "$beets_command"
   write_step "PLAN-005" "interactive" "beets prompt" "PLANNED" "choose enter Id and paste MBID" "$MBID"
@@ -106,6 +122,8 @@ main() {
     printf 'User: %s\n' "$(id -un)"
     printf 'Album directory: %s\n' "$ALBUM_DIR"
     printf 'Album name: %s\n' "$ALBUM_NAME"
+    printf 'Expected artist: %s\n' "$EXPECTED_ARTIST"
+    printf 'Expected album: %s\n' "$EXPECTED_ALBUM"
     printf 'Selected MBID: %s\n' "$MBID"
     printf 'Beets sandbox root: %s\n' "$BEETS_SANDBOX_ROOT"
     printf 'Report: %s\n' "$REPORT"
@@ -116,10 +134,9 @@ main() {
 
     printf '%s\n' '## Evidence'
     printf '\n'
-    printf '%s\n' '- Previous Beets dry-run worked technically but returned no automatic/manual text match.'
-    printf '%s\n' '- Album tag diagnosis showed complete local tags and fingerprints.'
-    printf '%s\n' '- MusicBrainz release candidate diagnosis ranked this MBID first.'
-    printf '%s\n' '- Candidate: Pharoah Sanders — Thembi, date 1987, country US, 6 tracks, title_matches=6, duration_delta=3.8s.'
+    printf '%s\n' '- Album tag diagnosis should be complete before this step.'
+    printf '%s\n' '- MusicBrainz release candidate diagnosis should provide the selected MBID.'
+    printf '%s\n' '- This plan prepares only a sandboxed Beets dry-run.'
     printf '\n'
 
     printf '%s\n' '## Planned command'
@@ -134,13 +151,17 @@ main() {
     printf '%s\n' '```text'
     printf '%s\n' 'At prompt, choose: enter Id'
     printf 'Paste MBID: %s\n' "$MBID"
+    printf 'Expected artist: %s\n' "$EXPECTED_ARTIST"
+    printf 'Expected album: %s\n' "$EXPECTED_ALBUM"
     printf '%s\n' 'Inspect proposed match before accepting.'
     printf '%s\n' '```'
     printf '\n'
 
     printf '%s\n' '## Decision rules'
     printf '\n'
-    printf '%s\n' '- Accept only if Beets shows Pharoah Sanders — Thembi with coherent 6-track mapping.'
+    printf '%s\n' "- Accept only if Beets shows the expected artist/album and coherent track mapping."
+    printf '%s\n' "- Expected artist: $EXPECTED_ARTIST"
+    printf '%s\n' "- Expected album: $EXPECTED_ALBUM"
     printf '%s\n' '- Do not use Use as-is.'
     printf '%s\n' '- Do not remove -C or -W.'
     printf '%s\n' '- This remains evidence gathering, not final import/tagging.'

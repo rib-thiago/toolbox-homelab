@@ -12,13 +12,11 @@ source "$LIB_DIR/paths.sh"
 STAMP="$(toolbox_timestamp)"
 SHARED_DIR="$(toolbox_shared_dir)"
 
-STAGING_DIR="/srv/media/music-staging/reviewing"
-DEFAULT_ALBUM="$STAGING_DIR/[1971] Thembi"
-DEFAULT_MBID="34497839-9158-4c6f-8945-7f543276ea3e"
-
 APPLY_MODE="${1:-}"
-ALBUM_DIR="${2:-$DEFAULT_ALBUM}"
-MBID="${3:-$DEFAULT_MBID}"
+ALBUM_DIR="${2:-}"
+MBID="${3:-}"
+EXPECTED_ARTIST="${4:-}"
+EXPECTED_ALBUM="${5:-}"
 
 ALBUM_NAME="$(basename "$ALBUM_DIR")"
 SAFE_ALBUM_NAME="$(printf '%s' "$ALBUM_NAME" | tr ' /[]()' '_______' | tr -cd '[:alnum:]_.-')"
@@ -34,7 +32,6 @@ LIVE_LOG="$REPORT_DIR/beets_mbid_dry_run_${SAFE_ALBUM_NAME}_live_$STAMP.log"
 
 ERROR_PATTERNS='error loading plugin|PluginImportError|ModuleNotFoundError|Could not import plugin|No module named|Traceback'
 NO_MATCH_PATTERNS='No matching release found|No matching release'
-MATCH_PATTERNS='Pharoah Sanders|Thembi|34497839-9158-4c6f-8945-7f543276ea3e'
 
 require_function() {
   local fn="$1"
@@ -65,18 +62,36 @@ write_step() {
   tsv_row "$step_id" "$phase" "$target" "$status" "$action" "$notes" >> "$TSV"
 }
 
+usage() {
+  cat <<'EOF'
+Usage:
+  apply-music-staging-beets-mbid-dry-run.sh --apply <album_dir> <mbid> <expected_artist> <expected_album>
+
+Safety:
+  Runs Beets with -C -W inside isolated BEETSDIR sandbox.
+  Does not intentionally write tags, copy files, move files or modify /srv/media/music.
+EOF
+}
+
+validate_args() {
+  if [ "$APPLY_MODE" != "--apply" ] || [ -z "$ALBUM_DIR" ] || [ -z "$MBID" ] || [ -z "$EXPECTED_ARTIST" ] || [ -z "$EXPECTED_ALBUM" ]; then
+    usage >&2
+    fail "Missing required arguments."
+  fi
+}
+
 confirm_apply() {
   local confirmation
 
-  if [ "$APPLY_MODE" != "--apply" ]; then
-    fail "This script runs an interactive Beets MBID dry-run. Re-run with: apply-music-staging-beets-mbid-dry-run.sh --apply [album_dir] [mbid]"
-  fi
+  validate_args
 
   printf '%s\n' "This script will run an interactive Beets MBID dry-run:"
   printf '%s\n' "- Album: $ALBUM_DIR"
   printf '%s\n' "- MBID: $MBID"
+  printf '%s\n' "- Expected artist: $EXPECTED_ARTIST"
+  printf '%s\n' "- Expected album: $EXPECTED_ALBUM"
   printf '%s\n' "- BEETSDIR: $BEETS_SANDBOX_ROOT"
-  printf '%s\n' "- Command: beet import -C -W"
+  printf '%s\n' "- Command: beet -v import -C -W"
   printf '%s\n' "- Live log: $LIVE_LOG"
   printf '%s\n' "At the Beets prompt, choose: enter Id"
   printf '%s\n' "Then paste: $MBID"
@@ -123,12 +138,14 @@ main() {
     printf 'Album directory: %s\n' "$ALBUM_DIR"
     printf 'Album name: %s\n' "$ALBUM_NAME"
     printf 'MBID: %s\n' "$MBID"
+    printf 'Expected artist: %s\n' "$EXPECTED_ARTIST"
+    printf 'Expected album: %s\n' "$EXPECTED_ALBUM"
     printf 'BEETSDIR: %s\n' "$BEETS_SANDBOX_ROOT"
     printf 'Live log: %s\n' "$LIVE_LOG"
     printf 'Report: %s\n' "$REPORT"
     printf 'TSV: %s\n' "$TSV"
     printf '\n'
-    printf '%s\n' 'Safety: runs beet import with -C -W inside isolated BEETSDIR sandbox.'
+    printf '%s\n' 'Safety: runs beet -v import with -C -W inside isolated BEETSDIR sandbox.'
     printf '%s\n' 'This script does not intentionally write tags, copy files, move files, or modify /srv/media/music.'
     printf '\n'
   } > "$REPORT"
@@ -164,7 +181,7 @@ main() {
     printf '%s\n' '## Beets command'
     printf '\n'
     printf '%s\n' '```bash'
-    printf 'BEETSDIR=%q beet import -C -W %q\n' "$BEETS_SANDBOX_ROOT" "$ALBUM_DIR"
+    printf 'BEETSDIR=%q beet -v import -C -W %q\n' "$BEETS_SANDBOX_ROOT" "$ALBUM_DIR"
     printf '%s\n' '```'
     printf '\n'
     printf '%s\n' '## Required interactive action'
@@ -172,6 +189,8 @@ main() {
     printf '%s\n' '```text'
     printf '%s\n' 'At prompt, choose: enter Id'
     printf 'Paste MBID: %s\n' "$MBID"
+    printf 'Expected artist: %s\n' "$EXPECTED_ARTIST"
+    printf 'Expected album: %s\n' "$EXPECTED_ALBUM"
     printf '%s\n' 'Inspect the proposed match before accepting.'
     printf '%s\n' '```'
     printf '\n'
@@ -182,10 +201,11 @@ main() {
 
   printf '%s\n' "Running Beets MBID dry-run. Interact with beet normally."
   printf '%s\n' "At prompt: choose enter Id, paste $MBID"
+  printf '%s\n' "Expected: $EXPECTED_ARTIST - $EXPECTED_ALBUM"
   printf '%s\n' "Log: $LIVE_LOG"
 
   set +e
-  env "BEETSDIR=$BEETS_SANDBOX_ROOT" beet import -C -W "$ALBUM_DIR" 2>&1 | tee "$LIVE_LOG"
+  env "BEETSDIR=$BEETS_SANDBOX_ROOT" beet -v import -C -W "$ALBUM_DIR" 2>&1 | tee "$LIVE_LOG"
   beet_status="${PIPESTATUS[0]}"
   set -e
 
@@ -197,9 +217,9 @@ main() {
   } >> "$REPORT"
 
   if [ "$beet_status" -eq 0 ]; then
-    write_step "RUN-001" "run" "$ALBUM_DIR" "OK" "beet import -C -W returned success" "$LIVE_LOG"
+    write_step "RUN-001" "run" "$ALBUM_DIR" "OK" "beet -v import -C -W returned success" "$LIVE_LOG"
   else
-    write_step "RUN-001" "run" "$ALBUM_DIR" "WARN" "beet import -C -W returned non-zero" "exit=$beet_status log=$LIVE_LOG"
+    write_step "RUN-001" "run" "$ALBUM_DIR" "WARN" "beet -v import -C -W returned non-zero" "exit=$beet_status log=$LIVE_LOG"
   fi
 
   found_errors="$(grep -Ei "$ERROR_PATTERNS" "$LIVE_LOG" || true)"
@@ -216,11 +236,11 @@ main() {
     write_step "VAL-002" "validate" "$LIVE_LOG" "WARN" "MusicBrainz no-match detected" "$found_no_match"
   fi
 
-  found_match_markers="$(grep -Ei "$MATCH_PATTERNS" "$LIVE_LOG" || true)"
+  found_match_markers="$(grep -Ei "$MBID|$EXPECTED_ARTIST|$EXPECTED_ALBUM" "$LIVE_LOG" || true)"
   if [ -n "$found_match_markers" ]; then
     write_step "VAL-003" "validate" "$LIVE_LOG" "OK" "expected match markers detected" "$found_match_markers"
   else
-    write_step "VAL-003" "validate" "$LIVE_LOG" "WARN" "expected match markers not detected" "expected Pharoah Sanders/Thembi/MBID"
+    write_step "VAL-003" "validate" "$LIVE_LOG" "WARN" "expected match markers not detected" "expected=$EXPECTED_ARTIST / $EXPECTED_ALBUM / $MBID"
   fi
 
   fail_count="$(awk -F '\t' 'NR > 1 && $4 == "FAIL" { c++ } END { print c+0 }' "$TSV")"

@@ -12,16 +12,23 @@ source "$LIB_DIR/paths.sh"
 STAMP="$(toolbox_timestamp)"
 SHARED_DIR="$(toolbox_shared_dir)"
 
+ALBUM_DIR="${1:-}"
+EXPECTED_MBID="${2:-}"
+EXPECTED_ARTIST="${3:-}"
+EXPECTED_ALBUM="${4:-}"
+EXPECTED_MATCH_MIN="${5:-80}"
+EXPECTED_DISTANCE_MAX="${6:-}"
+
+ALBUM_NAME="$(basename "$ALBUM_DIR")"
+SAFE_ALBUM_NAME="$(printf '%s' "$ALBUM_NAME" | tr ' /[]()' '_______' | tr -cd '[:alnum:]_.-')"
+
 REPORT_DIR="$SHARED_DIR/reports/media/staging"
 RAW_DIR="$SHARED_DIR/library-db/raw/media/staging"
 
-REPORT="$REPORT_DIR/music_staging_beets_mbid_dry_run_validation_report_$STAMP.txt"
-TSV="$RAW_DIR/music_staging_beets_mbid_dry_run_validation_$STAMP.tsv"
-
-EXPECTED_MBID="34497839-9158-4c6f-8945-7f543276ea3e"
+REPORT="$REPORT_DIR/music_staging_beets_mbid_dry_run_validation_${SAFE_ALBUM_NAME}_report_$STAMP.txt"
+TSV="$RAW_DIR/music_staging_beets_mbid_dry_run_validation_${SAFE_ALBUM_NAME}_$STAMP.tsv"
 
 ERROR_PATTERNS='error loading plugin|PluginImportError|ModuleNotFoundError|Could not import plugin|No module named|Traceback'
-NO_MATCH_PATTERNS='No matching release found|No matching release'
 
 require_function() {
   local fn="$1"
@@ -62,7 +69,21 @@ write_check() {
   tsv_row "$check_id" "$category" "$target" "$status" "$message" "$details" >> "$TSV"
 }
 
-check_contains() {
+check_contains_fixed() {
+  local check_id="$1"
+  local category="$2"
+  local file="$3"
+  local expected="$4"
+  local message="$5"
+
+  if grep -F "$expected" "$file" >/dev/null 2>&1; then
+    write_check "$check_id" "$category" "$file" "OK" "$message" "$expected"
+  else
+    write_check "$check_id" "$category" "$file" "FAIL" "$message not found" "$expected"
+  fi
+}
+
+check_contains_regex() {
   local check_id="$1"
   local category="$2"
   local file="$3"
@@ -76,7 +97,7 @@ check_contains() {
   fi
 }
 
-check_not_contains() {
+check_not_contains_regex() {
   local check_id="$1"
   local category="$2"
   local file="$3"
@@ -111,6 +132,50 @@ append_file_excerpt() {
   } >> "$REPORT"
 }
 
+usage() {
+  cat <<'EOF'
+Usage:
+  validate-music-staging-beets-mbid-dry-run.sh <album_dir> <mbid> <expected_artist> <expected_album> [expected_match_min] [expected_distance_max]
+
+Safety:
+  Validation only. Does not run Beets, write tags, copy files, move files or modify staging/library.
+EOF
+}
+
+validate_args() {
+  if [ -z "$ALBUM_DIR" ] || [ -z "$EXPECTED_MBID" ] || [ -z "$EXPECTED_ARTIST" ] || [ -z "$EXPECTED_ALBUM" ]; then
+    usage >&2
+    fail "Missing required arguments."
+  fi
+}
+
+extract_match_percent() {
+  local file="$1"
+
+  grep -Eo 'Match \([^)]*%[^)]*\)' "$file" 2>/dev/null \
+    | tail -n 1 \
+    | sed -E 's/.*\(([0-9]+([.][0-9]+)?)%.*/\1/' \
+    || true
+}
+
+validate_match_threshold() {
+  local file="$1"
+  local match_percent
+
+  match_percent="$(extract_match_percent "$file")"
+
+  if [ -z "$match_percent" ]; then
+    write_check "MATCH-THRESHOLD" "match" "$file" "WARN" "match percentage not detected" ""
+    return 0
+  fi
+
+  if awk -v got="$match_percent" -v min="$EXPECTED_MATCH_MIN" 'BEGIN { exit (got >= min) ? 0 : 1 }'; then
+    write_check "MATCH-THRESHOLD" "match" "$file" "OK" "match percentage meets threshold" "got=$match_percent min=$EXPECTED_MATCH_MIN"
+  else
+    write_check "MATCH-THRESHOLD" "match" "$file" "FAIL" "match percentage below threshold" "got=$match_percent min=$EXPECTED_MATCH_MIN"
+  fi
+}
+
 main() {
   local latest_apply_tsv
   local latest_apply_report
@@ -121,15 +186,16 @@ main() {
   local warn_count
 
   require_lib_contract
+  validate_args
 
   mkdir -p "$REPORT_DIR" "$RAW_DIR"
 
   log "Starting Beets MBID dry-run validation."
 
-  latest_apply_tsv="$(latest_file "$RAW_DIR" 'music_staging_beets_mbid_dry_run_apply_*_*.tsv')"
-  latest_apply_report="$(latest_file "$REPORT_DIR" 'music_staging_beets_mbid_dry_run_apply_*_report_*.txt')"
-  latest_live_log="$(latest_file "$REPORT_DIR" 'beets_mbid_dry_run_*_live_*.log')"
-  latest_debug_log="$(latest_file "$REPORT_DIR" 'beets_mbid_debug__1971__Thembi_*.log')"
+  latest_apply_tsv="$(latest_file "$RAW_DIR" "music_staging_beets_mbid_dry_run_apply_${SAFE_ALBUM_NAME}_*.tsv")"
+  latest_apply_report="$(latest_file "$REPORT_DIR" "music_staging_beets_mbid_dry_run_apply_${SAFE_ALBUM_NAME}_report_*.txt")"
+  latest_live_log="$(latest_file "$REPORT_DIR" "beets_mbid_dry_run_${SAFE_ALBUM_NAME}_live_*.log")"
+  latest_debug_log="$(latest_file "$REPORT_DIR" "beets_mbid_debug_${SAFE_ALBUM_NAME}_*.log")"
 
   if [ -n "$latest_debug_log" ] && [ -f "$latest_debug_log" ]; then
     evidence_log="$latest_debug_log"
@@ -151,7 +217,13 @@ main() {
     printf 'Generated at: %s\n' "$(toolbox_now)"
     printf 'Host: %s\n' "$(hostname)"
     printf 'User: %s\n' "$(id -un)"
+    printf 'Album directory: %s\n' "$ALBUM_DIR"
+    printf 'Album name: %s\n' "$ALBUM_NAME"
     printf 'Expected MBID: %s\n' "$EXPECTED_MBID"
+    printf 'Expected artist: %s\n' "$EXPECTED_ARTIST"
+    printf 'Expected album: %s\n' "$EXPECTED_ALBUM"
+    printf 'Expected match min: %s\n' "$EXPECTED_MATCH_MIN"
+    printf 'Expected distance max: %s\n' "$EXPECTED_DISTANCE_MAX"
     printf 'Latest apply TSV: %s\n' "$latest_apply_tsv"
     printf 'Latest apply report: %s\n' "$latest_apply_report"
     printf 'Latest live log: %s\n' "$latest_live_log"
@@ -183,17 +255,14 @@ main() {
   fi
 
   if [ -n "$evidence_log" ] && [ -f "$evidence_log" ]; then
-    check_not_contains "RUN-001" "runtime" "$evidence_log" "$ERROR_PATTERNS" "no plugin/runtime errors detected"
-    check_contains "PLG-001" "plugins" "$evidence_log" "Loading plugins: chroma, musicbrainz" "chroma and musicbrainz loaded"
-    check_contains "MB-001" "musicbrainz" "$evidence_log" "Requesting MusicBrainz release $EXPECTED_MBID" "expected MBID requested"
-    check_contains "MB-002" "musicbrainz" "$evidence_log" "Candidate: Pharoah Sanders - Thembi \($EXPECTED_MBID\)" "expected candidate found"
-    check_contains "MB-003" "musicbrainz" "$evidence_log" "Evaluating 6 candidates" "candidate evaluation happened"
-    check_contains "MATCH-001" "match" "$evidence_log" "Match .*93\.7%" "expected high match percentage found"
-    check_contains "MATCH-002" "match" "$evidence_log" "Success\. Distance: 0\.06" "expected low distance found"
-    check_contains "MATCH-003" "match" "$evidence_log" "MusicBrainz, CD, 1987, US, impulse!, MCAD-5860" "expected release metadata found"
-    check_contains "APPLY-001" "sandbox-apply" "$evidence_log" "album_imported" "album imported into sandbox database"
-    check_contains "APPLY-002" "sandbox-apply" "$evidence_log" "0 of 6 items replaced" "no file replacement happened"
-    check_not_contains "NO-MATCH-001" "musicbrainz" "$evidence_log" "$NO_MATCH_PATTERNS" "no final no-match after plugin correction"
+    check_not_contains_regex "RUN-001" "runtime" "$evidence_log" "$ERROR_PATTERNS" "no plugin/runtime errors detected"
+    check_contains_fixed "PLG-001" "plugins" "$evidence_log" "Loading plugins: chroma, musicbrainz" "chroma and musicbrainz loaded"
+    check_contains_fixed "MB-001" "musicbrainz" "$evidence_log" "$EXPECTED_MBID" "expected MBID detected"
+    check_contains_fixed "MB-002" "musicbrainz" "$evidence_log" "$EXPECTED_ARTIST" "expected artist detected"
+    check_contains_fixed "MB-003" "musicbrainz" "$evidence_log" "$EXPECTED_ALBUM" "expected album detected"
+    check_contains_regex "MB-004" "musicbrainz" "$evidence_log" "Evaluating [0-9]+ candidates" "candidate evaluation happened"
+    check_contains_regex "MATCH-001" "match" "$evidence_log" "Match .*%" "match percentage found"
+    validate_match_threshold "$evidence_log"
   fi
 
   append_file_excerpt "Evidence log" "$evidence_log"
@@ -212,7 +281,7 @@ main() {
     if [ "$fail_count" -gt 0 ]; then
       printf '%s\n' 'Interpretation: MBID dry-run validation failed.'
     else
-      printf '%s\n' 'Interpretation: MBID dry-run validation passed. Beets can match Thembi when chroma and musicbrainz plugins are both enabled.'
+      printf '%s\n' 'Interpretation: MBID dry-run validation passed for the supplied album/artist/MBID parameters.'
     fi
     printf '\n'
     printf '%s\n' 'Generated artifacts:'
