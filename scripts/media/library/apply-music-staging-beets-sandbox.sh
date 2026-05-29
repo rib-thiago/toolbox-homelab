@@ -178,7 +178,7 @@ import:
   incremental: no
   timid: yes
 
-plugins: chroma
+plugins: chroma musicbrainz
 
 chroma:
   auto: yes
@@ -276,7 +276,7 @@ main() {
   validate_file_contains "VAL-003" "$BEETS_CONFIG" "^  copy: no$" "copy disabled"
   validate_file_contains "VAL-004" "$BEETS_CONFIG" "^  write: no$" "write disabled"
   validate_file_contains "VAL-005" "$BEETS_CONFIG" "^  move: no$" "move disabled"
-  validate_file_contains "VAL-006" "$BEETS_CONFIG" "^plugins: chroma$" "chroma plugin"
+  validate_file_contains "VAL-006" "$BEETS_CONFIG" "^plugins: chroma musicbrainz$" "chroma plugin"
 
   run_report_command "VAL-007" "validate" "beet version" beet version
   run_report_command "VAL-008" "validate" "fpcalc -version" fpcalc -version

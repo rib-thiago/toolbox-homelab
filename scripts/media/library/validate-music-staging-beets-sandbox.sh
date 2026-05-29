@@ -212,7 +212,7 @@ main() {
   validate_config_contains "CFG-003" "^  copy: no$" "copy disabled"
   validate_config_contains "CFG-004" "^  write: no$" "write disabled"
   validate_config_contains "CFG-005" "^  move: no$" "move disabled"
-  validate_config_contains "CFG-006" "^plugins: chroma$" "chroma plugin"
+  validate_config_contains "CFG-006" "^plugins: chroma musicbrainz$" "chroma and musicbrainz plugins"
 
   config_output="$(mktemp)"
   version_output="$(mktemp)"
@@ -224,7 +224,7 @@ main() {
   fi
 
   validate_output_has_no_plugin_errors "PLG-001" "$config_output" "BEETSDIR beet config"
-  validate_output_contains "OUT-001" "$config_output" "plugins: chroma" "beet config chroma plugin"
+  validate_output_contains "OUT-001" "$config_output" "plugins: chroma, musicbrainz\|plugins: chroma musicbrainz" "beet config chroma and musicbrainz plugins"
   validate_output_contains "OUT-002" "$config_output" "copy: no" "beet config copy disabled"
   validate_output_contains "OUT-003" "$config_output" "write: no" "beet config write disabled"
   validate_output_contains "OUT-004" "$config_output" "move: no" "beet config move disabled"
@@ -236,7 +236,7 @@ main() {
   fi
 
   validate_output_has_no_plugin_errors "PLG-002" "$version_output" "BEETSDIR beet version"
-  validate_output_contains "OUT-005" "$version_output" "plugins: chroma" "beet version chroma plugin"
+  validate_output_contains "OUT-005" "$version_output" "plugins: chroma, musicbrainz\|plugins: chroma musicbrainz" "beet version chroma and musicbrainz plugins"
 
   rm -f "$config_output" "$version_output"
 
