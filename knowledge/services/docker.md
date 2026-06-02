@@ -123,7 +123,11 @@ Docker-related scripts and workflows may be found under:
 * `scripts/admin/storage`
 * `scripts/admin/backup`
 
-Agents must inspect existing scripts, reports, TSVs, and docs before proposing new Docker commands or Compose changes.
+Agents must inspect existing scripts, reports, TSVs, inventories, and docs before proposing new Docker commands or Compose changes.
+
+The current Toolbox script inventory shows Docker-specific scripts under `scripts/admin/docker`, but Docker-related concerns also appear across network, firewall, system, storage, and backup scripts.
+
+Agents must not assume that Docker knowledge is isolated under `scripts/admin/docker`.
 
 Relevant workflow families include:
 
@@ -287,6 +291,8 @@ A local agent may collect the following in read-only mode:
 * container health status when available;
 * references to Docker across `knowledge/`, `docs/`, and `scripts/`;
 * existing Docker reports, TSVs, inventories, and logs;
+* latest Toolbox script inventory report and TSV;
+* Docker-related rows from the script inventory;
 * references to Docker networks such as proxy networks or service-specific networks;
 * references to sensitive bind mounts under `/srv/media`, `/srv/toolbox`, and `/srv/compose`.
 
