@@ -350,6 +350,7 @@ The Toolbox is being prepared for agent-assisted workflows.
 
 The agent must work inside the existing Toolbox model:
 
+* read `knowledge/context/agent-entrypoint.md` before any task;
 * read `knowledge/` before acting;
 * use read-only diagnostics first;
 * generate plans before changes;
