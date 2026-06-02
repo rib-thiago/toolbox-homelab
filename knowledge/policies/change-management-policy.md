@@ -101,6 +101,10 @@ Script or tooling changes include edits to:
 * `scripts/helpers/`
 * `scripts/pipelines/`
 
+Before proposing a new script or manual command sequence, agents must inspect whether an existing Toolbox script, helper, shared library function, runbook, plan/apply/validate workflow, `run-job` pipeline, report, or TSV already covers the task.
+
+Existing scripts may be reused when appropriate, but execution must still follow the applicable safety level, approval rule, and validation path.
+
 These changes require syntax checks and, when practical, test execution or dry-run validation.
 
 For shell scripts, use the established validation workflow.
@@ -186,6 +190,7 @@ The diagnose phase must identify the current state before proposing changes.
 Depending on the task, diagnosis may include:
 
 * Git status;
+* existing Toolbox scripts or workflows that may already cover the task;
 * affected files;
 * affected services;
 * current containers;

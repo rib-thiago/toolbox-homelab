@@ -399,7 +399,9 @@ Agents must prefer durable evidence over ephemeral chat output.
 
 Agents should not ask the user to paste large raw logs when a local script can generate a report, TSV, log, inventory, manifest, or brief.
 
-Agents should propose scripts for repeated or long validation sequences.
+Agents should inspect existing scripts, reports, TSVs, inventories, runbooks, and pipelines before proposing new scripts or manual command sequences.
+
+Agents should propose scripts for repeated or long validation sequences when no suitable existing workflow exists.
 
 Agents should avoid scattering outputs across the source tree.
 

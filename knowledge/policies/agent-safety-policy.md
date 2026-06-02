@@ -81,7 +81,7 @@ The following actions are allowed by default when they do not modify state:
 * list files and directories;
 * inspect Git status;
 * inspect existing reports and TSVs under `/srv/toolbox/shared`;
-* inspect Toolbox scripts and documentation;
+* inspect Toolbox scripts, helpers, libraries, runbooks, pipelines, and documentation;
 * inspect command help output;
 * inspect service status with read-only commands;
 * inspect Docker state with read-only commands;
@@ -116,6 +116,7 @@ The following actions may be proposed in a plan but must not be executed until a
 A plan must explain:
 
 * goal;
+* whether an existing Toolbox script, helper, workflow, report, or TSV already covers the task;
 * affected paths;
 * affected services;
 * expected changes;
