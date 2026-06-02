@@ -121,6 +121,24 @@ Pipelines belong under:
 
 Agents must respect the existing layout and must not create new script areas without explaining function, destination, relationship with existing structure, and redundancy risk.
 
+## Existing scripts and workflows
+
+The Toolbox already contains many operational scripts, helpers, libraries, and workflows created through prior work.
+
+Before proposing a new script, new workflow, or long ad hoc command sequence, agents must inspect whether an existing Toolbox script, helper, library function, runbook, plan/apply/validate workflow, `run-job` pipeline, or generated report already covers the task.
+
+Existing scripts may be used when appropriate, but they must still be reviewed before execution, especially when they affect sensitive paths, services, media, backups, Git, or operational configuration.
+
+Agents should prefer:
+
+- existing validated scripts over new scripts;
+- existing scripts over manual command sequences;
+- existing shared library functions over script-local utility functions;
+- existing reports and TSVs over repeated raw terminal inspection.
+
+If no suitable existing workflow exists, the agent may propose a new one, but must explain why existing assets are insufficient.
+
+
 ## Script conventions
 
 Toolbox shell scripts should generally follow these conventions:
