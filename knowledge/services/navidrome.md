@@ -1,6 +1,6 @@
-Navidrome
+# Navidrome
 
-Purpose
+## Purpose
 
 Navidrome is the main music library server of the homelab.
 
@@ -8,15 +8,15 @@ It provides browser and client access to the curated music library, especially t
 
 Navidrome is not the place where music is initially curated. It should primarily expose material that has already passed through the appropriate staging, metadata, import, and validation workflows.
 
-Service type
+## Service type
 
-technical_service
+`technical_service`
 
 Navidrome is a technical service because it is a deployed music server/container that indexes and serves the curated music library.
 
 It is also operationally related to music staging, media curation, metadata policy, transcoding, Docker, networking, FileBrowser, Samba, and client playback behavior.
 
-Current role in the homelab
+## Current role in the homelab
 
 Navidrome currently acts as the main music server for the curated music collection.
 
@@ -32,7 +32,7 @@ Its role includes:
 
 Navidrome must be understood together with music staging, metadata policy, Beets/MusicBrainz workflows, FileBrowser, Samba, Docker bind mounts, Nginx Proxy Manager, Tailscale, and the private-first access model.
 
-Important paths
+## Important paths
 
 Main music library:
 
@@ -80,7 +80,7 @@ Generated Navidrome and music-library evidence should be stored under:
 
 Current library path, container mounts, Navidrome data path, transcoding configuration, clients, and access model must be verified from the host before making changes.
 
-Related services
+## Related services
 
 Navidrome is related to:
 
@@ -107,7 +107,7 @@ Navidrome is related to music staging because staging determines what should eve
 
 Navidrome is related to Samba and FileBrowser because both provide human access to files that may later appear in the Navidrome library.
 
-Related scripts and workflows
+## Related scripts and workflows
 
 Navidrome-related scripts and workflows may be found under:
 
@@ -148,7 +148,7 @@ Navidrome work should follow the standard workflow:
 * apply;
 * validate.
 
-Library and metadata policy
+## Library and metadata policy
 
 Navidrome should primarily index the curated main library, not unreviewed staging material.
 
@@ -176,7 +176,7 @@ For curated composer or special-collection workflows, such as Stockhausen, colle
 
 Agents must not “fix Navidrome” by directly editing music tags or moving library files without following the media curation and music-staging policies.
 
-Import readiness
+## Import readiness
 
 Material should be considered ready for Navidrome only after the relevant workflow has checked the required items.
 
@@ -197,7 +197,7 @@ A successful Navidrome scan or visible album does not prove that curation is com
 
 A missing album in Navidrome may indicate metadata, path, permission, container mount, scan, cache, or service configuration issues.
 
-Transcoding and playback policy
+## Transcoding and playback policy
 
 The homelab preference is to preserve archival masters and use on-demand transcoding for playback compatibility when appropriate.
 
@@ -215,7 +215,7 @@ Transcoding-related work may include:
 
 Agents must not transcode, replace masters, create derivative libraries, or delete originals without explicit approval.
 
-Clients
+## Clients
 
 Known relevant clients include:
 
@@ -239,7 +239,7 @@ A playback issue may be caused by:
 
 Client-specific troubleshooting should start with diagnosis and avoid changing the library prematurely.
 
-Related reports, TSVs, inventories, and logs
+## Related reports, TSVs, inventories, and logs
 
 Navidrome-related evidence should be stored under /srv/toolbox/shared.
 
@@ -284,7 +284,7 @@ For destination rules, consult:
 * docs/operations/toolbox_output_destinations_policy.md
 * knowledge/policies/reporting-policy.md
 
-Related policies and docs
+## Related policies and docs
 
 Required context:
 
@@ -329,7 +329,7 @@ Future or related service documents may include:
 * knowledge/services/slskd.md
 * knowledge/services/monitoring.md
 
-Sensitive operations
+## Sensitive operations
 
 Sensitive Navidrome operations include:
 
@@ -362,7 +362,7 @@ Extra-sensitive operations include:
 * exposing Navidrome outside the approved private-first model;
 * treating Navidrome display problems as proof that files should be rewritten.
 
-Read-only inspection allowed
+## Read-only inspection allowed
 
 Read-only Navidrome inspection is allowed when bounded and relevant.
 
@@ -397,7 +397,7 @@ Read-only commands may include, when appropriate:
 
 Read-only inspection must not be confused with approval to edit tags, move files, delete files, restart Navidrome, change transcode settings, change mounts, change network exposure, or change client behavior.
 
-Read-only collection plan
+## Read-only collection plan
 
 A local agent may collect the following in read-only mode:
 
@@ -442,7 +442,7 @@ A local agent must not in read-only mode:
 
 Non-trivial Navidrome inspection should generate a report and TSV.
 
-Actions requiring approval
+## Actions requiring approval
 
 The following require explicit approval:
 
@@ -467,7 +467,7 @@ Approval must be specific to the path, service, client, configuration, library e
 
 A general instruction to continue is not approval for unrelated Navidrome, media, or filesystem changes.
 
-Known historical lessons
+## Known historical lessons
 
 Navidrome has accumulated important operational lessons through codec/playback troubleshooting, Feishin backend configuration, Amperfy playback behavior, transcoding validation, Stockhausen album-count validation, metadata normalization, music staging, and main-library import workflows.
 
@@ -479,7 +479,7 @@ Detailed historical lessons should be consolidated under:
 
 Until that document exists, agents must treat Navidrome lessons mentioned in context, policies, service maps, reports, and validated scripts as operationally relevant.
 
-Open questions
+## Open questions
 
 Navidrome has open architectural and operational questions that should be resolved incrementally.
 
@@ -491,7 +491,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 Current known areas for future clarification include final import validation criteria, client troubleshooting runbooks, transcoding profiles, artwork behavior, artist normalization policy across non-Stockhausen collections, Navidrome backup coverage, and future Codex/local-agent read-only inspection boundaries.
 
-Source of truth
+## Source of truth
 
 Stable source and knowledge:
 

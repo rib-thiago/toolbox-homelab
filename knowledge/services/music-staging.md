@@ -1,6 +1,6 @@
-Music Staging
+# Music Staging
 
-Purpose
+## Purpose
 
 Music staging is the operational subsystem for reviewing, curating, validating, tagging, preparing, and importing music before it becomes part of the main music library.
 
@@ -8,9 +8,9 @@ It protects the main library from incomplete downloads, unreviewed metadata, bro
 
 Music staging is not a disposable download folder. It is a controlled curatorial workflow that connects Soulseek/slskd, FileBrowser, Samba, Beets, MusicBrainz, Navidrome, Toolbox scripts, reports, TSVs, validation routines, and human approval.
 
-Service type
+## Service type
 
-operational_subsystem
+`operational_subsystem`
 
 Music staging is an operational subsystem because it combines:
 
@@ -28,7 +28,7 @@ Music staging is an operational subsystem because it combines:
 
 It is not a technical service by itself, although it depends on technical services such as slskd, Samba, FileBrowser, Docker, Navidrome, and sometimes Beets-related tooling installed on the host.
 
-Current role in the homelab
+## Current role in the homelab
 
 Music staging currently acts as the safe buffer between downloaded music and the curated main music library.
 
@@ -46,7 +46,7 @@ Its role includes:
 
 Music staging must be understood together with media curation policy, filesystem safety policy, FileBrowser, Samba, slskd, Navidrome, Beets/MusicBrainz, and Toolbox script conventions.
 
-Important paths
+## Important paths
 
 Main music library:
 
@@ -103,7 +103,7 @@ Generated music-staging evidence should be stored under:
 
 Current staging state, directory names, Beets config, reports, and import targets must be verified from the host before making changes.
 
-Related services
+## Related services
 
 Music staging is related to:
 
@@ -128,7 +128,7 @@ Music staging is related to Navidrome because only curated, imported music shoul
 
 Music staging is related to backup because the primary backup strategy does not automatically mean large downloaded media or staging content is protected.
 
-Related scripts and workflows
+## Related scripts and workflows
 
 Music-staging scripts and workflows may be found under:
 
@@ -169,7 +169,7 @@ Music staging work should follow the standard workflow:
 * apply;
 * validate.
 
-Staging state model
+## Staging state model
 
 Music staging may use a state model such as:
 
@@ -197,7 +197,7 @@ Agents must not change staging state by moving directories merely because a name
 
 State transitions require an approved plan when they move, rename, delete, retag, import, or otherwise modify files.
 
-Metadata policy
+## Metadata policy
 
 Music staging must preserve archival safety and avoid premature metadata writes.
 
@@ -216,7 +216,7 @@ Agents must not write tags, remove tags, rewrite filenames, embed artwork, apply
 
 For Stockhausen material, Stockhausen-specific policies and workflows take precedence when applicable.
 
-Beets and MusicBrainz policy
+## Beets and MusicBrainz policy
 
 Beets and MusicBrainz workflows must remain controlled.
 
@@ -234,7 +234,7 @@ Agents must not run Beets import, write tags, move files, or apply plugin effect
 
 Read-only or dry-run Beets inspection may still require confirmation of exact command, BEETSDIR, config path, target path, and expected non-mutating behavior.
 
-Integrity, completeness, and duplicates
+## Integrity, completeness, and duplicates
 
 Music staging should distinguish between:
 
@@ -254,7 +254,7 @@ A clean tag audit does not automatically authorize deletion of staging files.
 
 Agents should use existing diagnostics and reports when available before proposing new checks.
 
-Artwork policy
+## Artwork policy
 
 Artwork work in music staging may include:
 
@@ -270,7 +270,7 @@ Agents must not fetch, replace, embed, delete, or compress artwork without an ap
 
 Artwork for Stockhausen or other special collections may have collection-specific rules.
 
-Import policy
+## Import policy
 
 Import from staging to the main music library is sensitive.
 
@@ -293,7 +293,7 @@ Agents must not move material directly into /srv/media/music without an approved
 
 Agents must not delete staging material merely because an import appears successful unless deletion or archival behavior is explicitly planned and validated.
 
-Transcoding policy
+## Transcoding policy
 
 The homelab preference is to preserve archival masters and use on-demand transcoding for playback compatibility when appropriate.
 
@@ -303,7 +303,7 @@ Conversion or export workflows should be treated as separate derivative/export w
 
 Agents must not transcode, replace masters, or delete originals without explicit approval.
 
-Related reports, TSVs, inventories, and logs
+## Related reports, TSVs, inventories, and logs
 
 Music-staging evidence should be stored under /srv/toolbox/shared.
 
@@ -347,7 +347,7 @@ For destination rules, consult:
 * docs/operations/toolbox_output_destinations_policy.md
 * knowledge/policies/reporting-policy.md
 
-Related policies and docs
+## Related policies and docs
 
 Required context:
 
@@ -390,7 +390,7 @@ Future or related service documents may include:
 * knowledge/services/navidrome.md
 * knowledge/services/slskd.md
 
-Sensitive operations
+## Sensitive operations
 
 Sensitive music-staging operations include:
 
@@ -428,7 +428,7 @@ Extra-sensitive operations include:
 * changing Stockhausen material outside Stockhausen-specific workflow;
 * treating staging files as disposable because they came from downloads.
 
-Read-only inspection allowed
+## Read-only inspection allowed
 
 Read-only music-staging inspection is allowed when bounded and relevant.
 
@@ -461,7 +461,7 @@ Read-only commands may include, when appropriate:
 
 Read-only inspection must not be confused with approval to move, delete, retag, rename, import, transcode, fetch artwork, embed artwork, or run mutating Beets operations.
 
-Read-only collection plan
+## Read-only collection plan
 
 A local agent may collect the following in read-only mode:
 
@@ -502,7 +502,7 @@ A local agent must not in read-only mode:
 
 Non-trivial music-staging inspection should generate a report and TSV.
 
-Actions requiring approval
+## Actions requiring approval
 
 The following require explicit approval:
 
@@ -531,7 +531,7 @@ Approval must be specific to the album, path, operation, source state, target st
 
 A general instruction to continue is not approval for unrelated media or staging changes.
 
-Known historical lessons
+## Known historical lessons
 
 Music staging has accumulated important operational lessons through slskd/Soulseek setup, Beets/MusicBrainz dry-runs, Thembi and Spectrum pilots, controlled metadata-write workflows, Stockhausen imports, FileBrowser/Samba access, and Navidrome library behavior.
 
@@ -543,7 +543,7 @@ Detailed historical lessons should be consolidated under:
 
 Until that document exists, agents must treat music-staging lessons mentioned in context, policies, service maps, reports, and validated scripts as operationally relevant.
 
-Open questions
+## Open questions
 
 Music staging has open architectural and operational questions that should be resolved incrementally.
 
@@ -555,7 +555,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 Current known areas for future clarification include final ready criteria, Beets plugin profile design, artwork workflow, ReplayGain workflow, genre policy, duplicate/missing workflow, import workflow, post-import cleanup policy, slskd service map, and future Codex/local-agent read-only inspection boundaries.
 
-Source of truth
+## Source of truth
 
 Stable source and knowledge:
 

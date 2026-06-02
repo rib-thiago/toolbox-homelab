@@ -1,6 +1,6 @@
-FileBrowser
+# FileBrowser
 
-Purpose
+## Purpose
 
 FileBrowser provides browser-based file access to selected homelab paths.
 
@@ -8,15 +8,15 @@ It is central to the user’s daily workflow with ChatGPT because it allows comf
 
 FileBrowser is not just a generic file manager. In this homelab, it is part of the human-in-the-loop workflow for inspecting, selecting, downloading, uploading, and reviewing files that are later discussed with ChatGPT or used in Toolbox operations.
 
-Service type
+## Service type
 
-technical_service
+`technical_service`
 
 FileBrowser is a technical service because it is a deployed application/container that exposes selected filesystem paths through a browser UI.
 
 It is also operationally related to Toolbox, Samba, backup, Docker, networking, media curation, reports, TSVs, and future ChatGPT/Codex workflows.
 
-Current role in the homelab
+## Current role in the homelab
 
 FileBrowser currently acts as a browser-based file access layer for selected homelab files and artifacts.
 
@@ -32,7 +32,7 @@ Its role includes:
 
 FileBrowser must be understood together with Docker bind mounts, filesystem permissions, Samba, backup, networking, Toolbox output destinations, and sensitive media paths.
 
-Important paths
+## Important paths
 
 Likely Compose and configuration paths include:
 
@@ -76,7 +76,7 @@ Generated FileBrowser-related evidence should be stored under:
 
 Current mount paths, exposed paths, access model, bind addresses, permissions, and FileBrowser configuration must be verified from the host before making changes.
 
-Related services
+## Related services
 
 FileBrowser is related to:
 
@@ -99,7 +99,7 @@ Samba provides SMB access, especially for Windows desktop workflows and mapped d
 
 FileBrowser provides browser-based access, especially for inspecting and retrieving Toolbox artifacts, reports, TSVs, generated documents, and files that may be shared with ChatGPT.
 
-Related scripts and workflows
+## Related scripts and workflows
 
 FileBrowser-related scripts and workflows may be found under:
 
@@ -131,7 +131,7 @@ FileBrowser work should follow the standard workflow:
 * apply;
 * validate.
 
-Related reports, TSVs, inventories, and logs
+## Related reports, TSVs, inventories, and logs
 
 FileBrowser-related evidence should be stored under /srv/toolbox/shared.
 
@@ -168,7 +168,7 @@ For destination rules, consult:
 * docs/operations/toolbox_output_destinations_policy.md
 * knowledge/policies/reporting-policy.md
 
-Related policies and docs
+## Related policies and docs
 
 Required context:
 
@@ -209,7 +209,7 @@ Future or related service documents may include:
 * knowledge/services/music-staging.md
 * knowledge/services/navidrome.md
 
-Sensitive operations
+## Sensitive operations
 
 Sensitive FileBrowser operations include:
 
@@ -243,7 +243,7 @@ Extra-sensitive operations include:
 * weakening authentication or network boundaries;
 * confusing FileBrowser convenience access with approval to mutate files.
 
-Read-only inspection allowed
+## Read-only inspection allowed
 
 Read-only FileBrowser inspection is allowed when bounded and relevant.
 
@@ -273,7 +273,7 @@ Read-only commands may include, when appropriate:
 
 Read-only inspection must not be confused with approval to edit configuration, restart FileBrowser, change bind mounts, change access paths, delete files, upload files, overwrite files, change permissions, or expose the service.
 
-Read-only collection plan
+## Read-only collection plan
 
 A local agent may collect the following in read-only mode:
 
@@ -315,7 +315,7 @@ A local agent must not in read-only mode:
 
 Non-trivial FileBrowser inspection should generate a report and TSV.
 
-Actions requiring approval
+## Actions requiring approval
 
 The following require explicit approval:
 
@@ -338,7 +338,7 @@ Approval must be specific to the path, access model, permission behavior, networ
 
 A general instruction to continue is not approval for unrelated FileBrowser or filesystem changes.
 
-Known historical lessons
+## Known historical lessons
 
 FileBrowser has accumulated operational lessons through daily ChatGPT-assisted workflows, generated artifact review, Docker bind mounts, private-first access, Samba/FileBrowser boundary decisions, and Toolbox output-destination policy.
 
@@ -350,7 +350,7 @@ Detailed historical lessons should be consolidated under:
 
 Until that document exists, agents must treat FileBrowser lessons mentioned in context, policies, service maps, reports, and validated scripts as operationally relevant.
 
-Open questions
+## Open questions
 
 FileBrowser has open architectural and operational questions that should be resolved incrementally.
 
@@ -362,7 +362,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 Current known areas for future clarification include Tailscale access model, read-only versus write access boundaries, exact mounted path inventory, backup coverage for FileBrowser configuration, artifact handoff workflow, Samba/FileBrowser boundary, and future Codex/local-agent read-only inspection boundaries.
 
-Source of truth
+## Source of truth
 
 Stable source and knowledge:
 
