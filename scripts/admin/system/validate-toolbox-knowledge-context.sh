@@ -244,6 +244,7 @@ main() {
   check_file_exists "context_file" "knowledge/context/toolbox-context.md"
   check_file_exists "policy_file" "knowledge/policies/agent-safety-policy.md"
   check_file_exists "policy_file" "knowledge/policies/change-management-policy.md"
+  check_file_exists "policy_file" "knowledge/policies/reporting-policy.md"
 
   check_markdown_fences "knowledge/README.md"
   check_markdown_fences "knowledge/context/agent-entrypoint.md"
@@ -251,6 +252,7 @@ main() {
   check_markdown_fences "knowledge/context/toolbox-context.md"
   check_markdown_fences "knowledge/policies/agent-safety-policy.md"
   check_markdown_fences "knowledge/policies/change-management-policy.md"
+  check_markdown_fences "knowledge/policies/reporting-policy.md"
 
   check_reference "knowledge/context/agent-entrypoint.md" "knowledge/README.md"
   check_reference "knowledge/context/homelab-context.md" "knowledge/context/agent-entrypoint.md"
@@ -276,6 +278,15 @@ main() {
   check_reference "docs/operations/toolbox_script_conventions.md" "knowledge/policies/change-management-policy.md"
   check_reference "docs/operations/toolbox_reports_policy.md" "knowledge/policies/change-management-policy.md"
   check_reference "docs/operations/toolbox_storage_policy.md" "knowledge/policies/change-management-policy.md"
+
+  check_reference "knowledge/context/agent-entrypoint.md" "knowledge/policies/reporting-policy.md"
+  check_reference "knowledge/context/homelab-context.md" "knowledge/policies/reporting-policy.md"
+  check_reference "knowledge/context/toolbox-context.md" "knowledge/policies/reporting-policy.md"
+  check_reference "knowledge/policies/agent-safety-policy.md" "knowledge/policies/reporting-policy.md"
+  check_reference "knowledge/policies/change-management-policy.md" "knowledge/policies/reporting-policy.md"
+  check_reference "docs/operations/toolbox_reports_policy.md" "knowledge/policies/reporting-policy.md"
+  check_reference "docs/operations/toolbox_logging_policy.md" "knowledge/policies/reporting-policy.md"
+  check_reference "docs/operations/toolbox_output_destinations_policy.md" "knowledge/policies/reporting-policy.md"
 
   check_git_diff_check
   check_git_status
