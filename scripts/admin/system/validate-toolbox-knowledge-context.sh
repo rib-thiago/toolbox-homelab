@@ -239,6 +239,7 @@ main() {
   check_dir_exists "dir" "knowledge/runbooks"
 
   check_file_exists "file" "knowledge/README.md"
+  check_file_exists "file" "knowledge/services/README.md"
   check_file_exists "context_file" "knowledge/context/agent-entrypoint.md"
   check_file_exists "context_file" "knowledge/context/homelab-context.md"
   check_file_exists "context_file" "knowledge/context/toolbox-context.md"
@@ -249,6 +250,7 @@ main() {
   check_file_exists "policy_file" "knowledge/policies/media-curation-policy.md"
 
   check_markdown_fences "knowledge/README.md"
+  check_markdown_fences "knowledge/services/README.md"
   check_markdown_fences "knowledge/context/agent-entrypoint.md"
   check_markdown_fences "knowledge/context/homelab-context.md"
   check_markdown_fences "knowledge/context/toolbox-context.md"
@@ -259,6 +261,15 @@ main() {
   check_markdown_fences "knowledge/policies/media-curation-policy.md"
 
   check_reference "knowledge/context/agent-entrypoint.md" "knowledge/README.md"
+
+  check_reference "knowledge/context/agent-entrypoint.md" "knowledge/services/README.md"
+  check_reference "knowledge/context/homelab-context.md" "knowledge/services/README.md"
+  check_reference "knowledge/context/toolbox-context.md" "knowledge/services/README.md"
+  check_reference "knowledge/policies/agent-safety-policy.md" "knowledge/services/README.md"
+  check_reference "knowledge/policies/change-management-policy.md" "knowledge/services/README.md"
+  check_reference "knowledge/policies/reporting-policy.md" "knowledge/services/README.md"
+  check_reference "knowledge/policies/filesystem-safety-policy.md" "knowledge/services/README.md"
+  check_reference "knowledge/policies/media-curation-policy.md" "knowledge/services/README.md"
   check_reference "knowledge/context/homelab-context.md" "knowledge/context/agent-entrypoint.md"
   check_reference "knowledge/context/toolbox-context.md" "knowledge/context/agent-entrypoint.md"
   check_reference "knowledge/context/agent-entrypoint.md" "knowledge/context/homelab-context.md"
