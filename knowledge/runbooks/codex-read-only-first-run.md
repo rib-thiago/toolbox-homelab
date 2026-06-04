@@ -8,19 +8,30 @@ This first run is intentionally limited. Its goal is to test whether Codex can r
 
 ## Purpose
 
-The purpose of this runbook is to define a safe first Codex/local-agent exercise.
+The purpose of this runbook is to define a safe first Codex/local-agent exercise and its immediate follow-up mode.
 
-The first run should verify that Codex can:
+The first run is split into two modes:
+
+1. Strict read-only mode.
+2. Evidence-writing diagnostic mode.
+
+Strict read-only mode verifies that Codex can:
 
 * read the knowledge entrypoint;
 * follow policy and service-map boundaries;
 * inspect repository structure;
-* inspect existing validators and diagnostics;
+* inspect existing documentation and scripts;
 * distinguish observation from interpretation;
 * identify missing inventory or graph artifacts;
 * identify questions that require operator intent;
 * return findings in a structured format;
-* avoid proposing or applying changes without approval.
+* avoid unsafe action.
+
+Evidence-writing diagnostic mode verifies that Codex can run existing Toolbox validators and diagnostics while writing only generated evidence under `/srv/toolbox/shared`.
+
+This runbook does not treat generated reports, TSVs, and logs as service changes, repo changes, media changes, configuration changes, or Git changes.
+
+Generated evidence is allowed only when explicitly entering evidence-writing diagnostic mode.
 
 ## Non-goals
 
@@ -109,24 +120,52 @@ Codex must not inspect media collections, backup repositories, live service data
 
 This runbook does not define the global read-only permission model.
 
-For this first exercise only, Codex may perform bounded read-only inspection such as:
+For this first exercise, there are two allowed modes.
+
+### Mode 1 — strict read-only
+
+Codex may:
 
 * list files under the allowed repository areas;
 * read Markdown files under `knowledge/` and selected `docs/`;
 * inspect shell scripts under `scripts/` and `bin/`;
-* inspect recent reports and TSVs under the allowed generated-evidence areas;
-* run the existing knowledge validators;
-* run the existing script inventory diagnostic;
-* run the existing knowledge architecture candidates diagnostic;
+* inspect already-existing reports and TSVs under the allowed generated-evidence areas;
 * report findings, questions, and suggested next diagnostics.
 
-The concrete commands for the first run should be limited to the “First-run command set” section.
+Codex must not run validators or diagnostics that create reports, TSVs, temp files, logs, or other generated artifacts while in strict read-only mode.
+
+### Mode 2 — evidence-writing diagnostic mode
+
+Codex may run existing Toolbox validators and diagnostics if, and only if, the operator explicitly approves evidence-writing diagnostic mode.
+
+In evidence-writing diagnostic mode, the only permitted writes are generated evidence under:
+
+* `/srv/toolbox/shared/reports/`
+* `/srv/toolbox/shared/library-db/raw/`
+* `/srv/toolbox/shared/logs/`, when a script already uses that location
+* temporary files created and removed by existing Toolbox scripts under `/srv/toolbox/shared/`
+
+Codex must not modify:
+
+* `/srv/toolbox/app`
+* `/srv/media`
+* `/srv/compose`
+* service configuration
+* Docker state
+* Git state
+* permissions
+* secrets
+* credentials
+* shell configuration
+* media files
+* backup repositories
+
+Generated evidence writes do not authorize patches, commits, service changes, media changes, or configuration changes.
 
 ## Forbidden actions for this first run
 
 Codex must not:
 
-* write files;
 * patch files;
 * edit Markdown;
 * edit scripts;
@@ -147,11 +186,17 @@ Codex must not:
 * mark open questions as resolved;
 * create ADRs.
 
+In strict read-only mode, Codex must not write any file.
+
+In evidence-writing diagnostic mode, Codex may write only generated evidence under `/srv/toolbox/shared` using existing Toolbox validators and diagnostics.
+
+A general instruction to proceed is not approval for evidence-writing diagnostic mode.
+
 A general instruction to proceed is not approval for any forbidden action.
 
 ## First-run command set
 
-The first run may use the following commands.
+### Mode 1 — strict read-only command set
 
 Repository status:
 
@@ -161,6 +206,20 @@ Repository status:
 Knowledge tree inspection:
 
     find knowledge -maxdepth 3 -type f | sort
+
+Existing evidence lookup without shell helpers:
+
+    find /srv/toolbox/shared/reports/system -type f -name '*knowledge_context_validation*' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1
+    find /srv/toolbox/shared/reports/system -type f -name '*knowledge_policies_consistency*' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1
+    find /srv/toolbox/shared/reports/system -type f -name '*knowledge_services_consistency*' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1
+    find /srv/toolbox/shared/reports/system -type f -name '*toolbox_script_inventory_report*' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1
+    find /srv/toolbox/shared/reports/system -type f -name '*knowledge_architecture_candidates_report*' -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -1
+
+Codex may read the latest report paths found by these commands.
+
+### Mode 2 — evidence-writing diagnostic command set
+
+Mode 2 requires explicit operator approval.
 
 Core validators:
 
@@ -173,17 +232,11 @@ Existing diagnostics:
     diagnose-toolbox-script-inventory.sh
     scripts/admin/system/diagnose-knowledge-architecture-candidates.sh
 
-Recent evidence lookup:
+Post-diagnostic status:
 
-    latest-file /srv/toolbox/shared/reports/system '*knowledge_context_validation*'
-    latest-file /srv/toolbox/shared/reports/system '*knowledge_policies_consistency*'
-    latest-file /srv/toolbox/shared/reports/system '*knowledge_services_consistency*'
-    latest-file /srv/toolbox/shared/reports/system '*toolbox_script_inventory_report*'
-    latest-file /srv/toolbox/shared/reports/system '*knowledge_architecture_candidates_report*'
+    git status --short
 
-Codex may read the resulting reports and TSVs.
-
-Codex must not expand beyond this command set without operator approval.
+Codex must not expand beyond the active mode command set without operator approval.
 
 ## Expected output from Codex
 
@@ -338,17 +391,31 @@ Instead, Codex should identify candidate updates and wait for operator review.
 
 ## Completion criteria
 
-This first run is complete when Codex has produced:
+Strict read-only mode is complete when Codex has produced:
 
 * the actual inspected scope;
-* validator results;
-* diagnostic results;
+* existing evidence inspected, if available;
 * structured findings;
 * structured questions for the operator;
 * a classification summary;
 * recommended next step;
 * no file modifications;
+* no generated evidence;
 * no service modifications;
+* no Git changes.
+
+Evidence-writing diagnostic mode is complete when Codex has produced:
+
+* validator results;
+* diagnostic results;
+* generated reports and TSVs only under `/srv/toolbox/shared`;
+* structured findings;
+* structured questions for the operator;
+* a classification summary;
+* recommended next step;
+* no repo modifications;
+* no service modifications;
+* no media modifications;
 * no Git changes.
 
 ## Human review
