@@ -360,7 +360,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 * knowledge/architecture/open-questions.md
 
-Current known areas for future clarification include Tailscale access model, read-only versus write access boundaries, exact mounted path inventory, backup coverage for FileBrowser configuration, artifact handoff workflow, Samba/FileBrowser boundary, and future Codex/local-agent read-only inspection boundaries.
+Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.
 
 ## Source of truth
 

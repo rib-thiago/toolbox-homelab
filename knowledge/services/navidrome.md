@@ -489,7 +489,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 * knowledge/architecture/open-questions.md
 
-Current known areas for future clarification include final import validation criteria, client troubleshooting runbooks, transcoding profiles, artwork behavior, artist normalization policy across non-Stockhausen collections, Navidrome backup coverage, and future Codex/local-agent read-only inspection boundaries.
+Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.
 
 ## Source of truth
 

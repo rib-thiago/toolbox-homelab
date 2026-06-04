@@ -360,7 +360,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 * `knowledge/architecture/open-questions.md`
 
-Current known areas for future clarification include Docker service inventory, runtime profiles, Compose normalization, service hardening, image update policy, backup coverage for service data, and how Docker should interact with future Codex/local-agent workflows.
+Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.
 
 ## Source of truth
 

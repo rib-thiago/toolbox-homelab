@@ -289,6 +289,11 @@ Required policies:
 * `knowledge/policies/filesystem-safety-policy.md`
 * `knowledge/policies/media-curation-policy.md`
 
+Relevant service maps:
+
+* `knowledge/services/README.md`
+* `knowledge/services/docker.md`
+
 Important operational documentation:
 
 * `docs/operations/toolbox_architecture_reconciliation.md`
@@ -455,7 +460,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 - `knowledge/architecture/open-questions.md`
 
-Current known areas for future clarification include Codex/local-agent usage, script inventory maintenance, ChatGPT briefs, `scripts/lib` evolution, `run-job` scope, service-specific runbooks, knowledge graph representation, and historical lessons consolidation.
+Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.
 
 ## Source of truth
 

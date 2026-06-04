@@ -386,7 +386,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 * `knowledge/architecture/open-questions.md`
 
-Current known areas for future clarification include secondary/offsite backups, media backup policy, FileBrowser artifact access, Backrest documentation, restore runbooks, backup service inventory, and future Codex/local-agent read-only inspection boundaries.
+Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.
 
 ## Source of truth
 

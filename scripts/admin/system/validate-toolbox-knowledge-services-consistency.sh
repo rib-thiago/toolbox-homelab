@@ -200,6 +200,7 @@ accepted_repeated_lines = {
     "Agents must not treat memory, old reports, or chat history as proof of current host state.",
     "A general instruction to continue is not approval for unrelated changes.",
     "Service-specific lessons should be summarized here only when they directly affect operation.",
+    "Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.",
 }
 
 ok = warn = fail = info = 0

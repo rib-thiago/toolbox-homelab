@@ -359,7 +359,7 @@ Broader open questions should be consolidated under a future architecture docume
 
 * `knowledge/architecture/open-questions.md`
 
-Current known areas for future clarification include service access inventory, internal DNS strategy, Tailscale access patterns, DOCKER-USER review, IPv6 review, FileBrowser access model, monitoring exposure, and future Codex/local-agent network inspection boundaries.
+Initial service-specific open-question candidates should be collected through diagnostics, inventories, graph generation, reports, TSVs, and operator review. Canonical cross-service or architectural questions should be consolidated in `knowledge/architecture/open-questions.md`.
 
 ## Source of truth
 
