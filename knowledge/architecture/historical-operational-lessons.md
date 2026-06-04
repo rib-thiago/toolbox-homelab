@@ -188,6 +188,24 @@ Related artifacts:
 * `knowledge/runbooks/codex-read-only-first-run.md`
 * `knowledge/policies/agent-safety-policy.md`
 
+#### H011b — Codex diagnostics need an evidence-writing mode
+
+Problem: The Codex first-run workflow exposed a practical gap between strict filesystem read-only work and Toolbox diagnostics that are read-only toward live state but still generate reports, TSVs, and inventory artifacts under `/srv/toolbox/shared`.
+
+Resolution: The first-run workflow distinguished strict read-only mode from evidence-writing diagnostic mode, with writes limited to generated evidence and no authorization for repo patches, Git operations, service changes, media changes, config changes, permission changes, secrets access, or backup changes.
+
+Lesson: Evidence-writing diagnostics are a distinct operational mode, not a weakening of change-control boundaries.
+
+Operational consequence: Agents must name the active mode before running validators or diagnostics that write generated evidence, and must not treat evidence generation as permission to change source, services, media, configs, permissions, secrets, backups, or Git state.
+
+Related artifacts:
+
+* `knowledge/runbooks/codex-read-only-first-run.md`
+* `docs/operations/toolbox_output_destinations_policy.md`
+* `scripts/admin/system/generate-toolbox-inventory.sh`
+* `/srv/toolbox/shared/reports/system/toolbox_script_inventory_report_20260604-065850.txt`
+* `/srv/toolbox/shared/reports/system/toolbox_inventory_report_20260604-065905.txt`
+
 ### Python, Beets, and MusicBrainz
 
 #### H012 — Minimal Python tooling avoided unnecessary scope expansion

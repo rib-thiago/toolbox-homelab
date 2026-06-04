@@ -130,9 +130,9 @@ Status: `needs diagnosis`
 
 Question: Should there be one unified inventory command or separate inventory diagnostics by domain?
 
-Why open: Inventories are required input for graph generation, but no official inventory-generation layer exists yet.
+Why open: Inventories are required input for graph generation. `scripts/admin/system/generate-toolbox-inventory.sh` now produces the initial `toolbox_inventory_v0` layer from the Toolbox script inventory, but it does not settle whether future inventory generation should remain domain-specific, become unified, or define shared schemas across domains.
 
-Needed diagnosis: Map existing diagnostics and decide common inventory schema.
+Needed diagnosis: Compare the dated Toolbox script inventory and `toolbox_inventory_v0` output with other candidate inventory domains, then decide the command structure, freshness rules, and common schema requirements.
 
 Candidate ADR: Yes.
 
@@ -144,9 +144,9 @@ Status: `needs diagnosis`
 
 Question: What command or workflow will produce `knowledge/graph/entities.yaml` and `knowledge/graph/relations.yaml`?
 
-Why open: The graph model is conceptually defined but not implemented.
+Why open: The graph model is conceptually defined but not implemented. Inventory must precede graph generation, and graph relations must be derived from dated evidence, inventory rows, relation hints, service maps, policies, and explicit graph-generation rules rather than memory or manually invented assumptions.
 
-Needed diagnosis: Define inputs, schema, generation process, validation, and update policy.
+Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the rules that convert non-authoritative relation hints or evidence fields into proposed graph entities and relations.
 
 Candidate ADR: Yes.
 
@@ -186,9 +186,9 @@ Status: `needs diagnosis`
 
 Question: Should each graph relation include source, confidence, observed time, evidence path, and generating command?
 
-Why open: Relations without evidence can become undocumented assumptions.
+Why open: Relations without evidence can become undocumented assumptions. The first `toolbox_inventory_v0` output records reports and TSVs as evidence fields and explicitly treats relation hints as non-authoritative hints, not graph edges.
 
-Needed diagnosis: Design minimum relation metadata.
+Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, and explicit generation rules should support confidence and provenance.
 
 Candidate ADR: Yes.
 
