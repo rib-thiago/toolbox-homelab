@@ -172,6 +172,22 @@ Lesson: Shell ergonomics protects operational quality and continuity.
 
 Operational consequence: Agents must not casually replace or break established shell muscle memory.
 
+#### H011a — GNU awk may be required for official installer compatibility
+
+Problem: The official Codex CLI standalone installer initially failed on Ubuntu with the message that it could not find the SHA-256 digest for the Linux package in the checksums file.
+
+Resolution: The host was checked and `awk` was confirmed to resolve to GNU awk (`gawk`). After `gawk` was available as `/usr/bin/awk`, the same official installer completed successfully and installed Codex CLI 0.137.0 under the standalone release path.
+
+Lesson: Installer scripts may depend on GNU awk behavior even when they invoke `awk` generically. On Ubuntu/Debian systems, `awk` may be provided by `mawk` or `gawk`, and this can affect installer compatibility.
+
+Operational consequence: When official shell installers fail in parsing, checksum, or pattern-matching steps, agents should diagnose the local POSIX/GNU toolchain before bypassing checksums, editing remote installer logic, using unofficial packages, or switching installation methods.
+
+Related artifacts:
+
+* `scripts/admin/system/diagnose-codex-cli-readiness.sh`
+* `knowledge/runbooks/codex-read-only-first-run.md`
+* `knowledge/policies/agent-safety-policy.md`
+
 ### Python, Beets, and MusicBrainz
 
 #### H012 — Minimal Python tooling avoided unnecessary scope expansion
