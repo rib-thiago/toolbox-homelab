@@ -28,6 +28,7 @@ POLICIES=(
   "knowledge/policies/reporting-policy.md"
   "knowledge/policies/filesystem-safety-policy.md"
   "knowledge/policies/media-curation-policy.md"
+  "knowledge/policies/architecture-knowledge-policy.md"
 )
 
 CORE_CONTEXT_REFS=(
@@ -419,6 +420,7 @@ main() {
   check_reference "knowledge/policies/change-management-policy.md" "knowledge/policies/reporting-policy.md"
   check_reference "knowledge/policies/reporting-policy.md" "knowledge/policies/filesystem-safety-policy.md"
   check_reference "knowledge/policies/filesystem-safety-policy.md" "knowledge/policies/media-curation-policy.md"
+  check_reference "knowledge/policies/media-curation-policy.md" "knowledge/policies/architecture-knowledge-policy.md"
 
   for term in "${CORE_POLICY_TERMS[@]}"; do
     check_term_in_corpus "$term"

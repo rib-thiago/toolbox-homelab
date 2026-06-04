@@ -259,6 +259,7 @@ main() {
   check_file_exists "policy_file" "knowledge/policies/reporting-policy.md"
   check_file_exists "policy_file" "knowledge/policies/filesystem-safety-policy.md"
   check_file_exists "policy_file" "knowledge/policies/media-curation-policy.md"
+  check_file_exists "policy_file" "knowledge/policies/architecture-knowledge-policy.md"
 
   check_markdown_fences "knowledge/README.md"
   check_markdown_fences "knowledge/services/README.md"
@@ -281,6 +282,7 @@ main() {
   check_markdown_fences "knowledge/policies/reporting-policy.md"
   check_markdown_fences "knowledge/policies/filesystem-safety-policy.md"
   check_markdown_fences "knowledge/policies/media-curation-policy.md"
+  check_markdown_fences "knowledge/policies/architecture-knowledge-policy.md"
 
   check_reference "knowledge/context/agent-entrypoint.md" "knowledge/README.md"
 
@@ -407,6 +409,19 @@ main() {
   check_reference "docs/operations/toolbox_output_destinations_policy.md" "knowledge/services/filebrowser.md"
   check_reference "docs/operations/toolbox_script_conventions.md" "knowledge/services/filebrowser.md"
   check_reference "docs/operations/toolbox_storage_policy.md" "knowledge/services/filebrowser.md"
+  check_reference "knowledge/context/agent-entrypoint.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/context/homelab-context.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/context/toolbox-context.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/services/README.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/architecture/historical-operational-lessons.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/architecture/open-questions.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/policies/agent-safety-policy.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/policies/change-management-policy.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/policies/reporting-policy.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/policies/filesystem-safety-policy.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "knowledge/policies/media-curation-policy.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "docs/operations/toolbox_architecture_reconciliation.md" "knowledge/policies/architecture-knowledge-policy.md"
+check_reference "docs/operations/toolbox_output_destinations_policy.md" "knowledge/policies/architecture-knowledge-policy.md"
 
   check_reference "knowledge/context/agent-entrypoint.md" "knowledge/services/music-staging.md"
   check_reference "knowledge/context/homelab-context.md" "knowledge/services/music-staging.md"
