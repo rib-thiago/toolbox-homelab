@@ -206,6 +206,25 @@ Related artifacts:
 * `/srv/toolbox/shared/reports/system/toolbox_script_inventory_report_20260604-065850.txt`
 * `/srv/toolbox/shared/reports/system/toolbox_inventory_report_20260604-065905.txt`
 
+#### H011c — Script inventory needs semantic interpretation before graph use
+
+Problem: The first Toolbox inventory workflow produced useful raw script inventory and `toolbox_inventory_v0` evidence, but a follow-up read-only semantic script pass showed that path-level classification, static feature flags, and text mentions do not fully describe what scripts actually do.
+
+Resolution: The graph workfront was paused before ADR or graph generation so the missing intermediate layer could be named explicitly: raw script inventory, semantic script inventory, enriched inventory, graph candidates, then reviewed graph.
+
+Lesson: Static inventory is evidence, not proof of validated behavior. Script-derived graph relations need semantic interpretation before they can become graph candidates, and runtime validation before they can become high-confidence accepted relations.
+
+Operational consequence: Agents must not promote relation hints, path categories, or static text mentions directly into graph edges. They should distinguish path-level classification from source-body semantics, and source-body semantics from runtime-validated behavior.
+
+Related artifacts:
+
+* `scripts/admin/system/diagnose-toolbox-script-inventory.sh`
+* `scripts/admin/system/generate-toolbox-inventory.sh`
+* `/srv/toolbox/shared/library-db/raw/system/toolbox_script_inventory_20260604-065850.tsv`
+* `/srv/toolbox/shared/inventory/toolbox/toolbox_inventory_20260604-065905.tsv`
+* `/srv/toolbox/shared/reports/system/toolbox_script_inventory_report_20260604-065850.txt`
+* `/srv/toolbox/shared/reports/system/toolbox_inventory_report_20260604-065905.txt`
+
 ### Python, Beets, and MusicBrainz
 
 #### H012 — Minimal Python tooling avoided unnecessary scope expansion

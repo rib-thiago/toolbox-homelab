@@ -144,9 +144,9 @@ Status: `needs diagnosis`
 
 Question: What command or workflow will produce `knowledge/graph/entities.yaml` and `knowledge/graph/relations.yaml`?
 
-Why open: The graph model is conceptually defined but not implemented. Inventory must precede graph generation, and graph relations must be derived from dated evidence, inventory rows, relation hints, service maps, policies, and explicit graph-generation rules rather than memory or manually invented assumptions.
+Why open: The graph model is conceptually defined but not implemented. Inventory must precede graph generation, and graph relations must be derived from dated evidence, inventory rows, relation hints, service maps, policies, and explicit graph-generation rules rather than memory or manually invented assumptions. The first semantic script pass showed that raw script inventory and `toolbox_inventory_v0` are useful but still too shallow for graph generation: path-level classification is not semantic classification, static script text is not runtime-validated behavior, and relation hints are not graph edges.
 
-Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the rules that convert non-authoritative relation hints or evidence fields into proposed graph entities and relations.
+Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the intermediate semantic inventory layer needed before non-authoritative relation hints or evidence fields can become proposed graph entities and relations.
 
 Candidate ADR: Yes.
 
@@ -156,11 +156,11 @@ Related domains: graph, Codex, inventory, scripts.
 
 Status: `candidate ADR`
 
-Question: What schema should represent services, scripts, paths, reports, TSVs, Compose projects, mounts, policies, workflows, and evidence?
+Question: What schema should represent services, scripts, paths, reports, TSVs, Compose projects, mounts, policies, workflows, semantic script classifications, and evidence?
 
-Why open: Without schema, the graph may become arbitrary text.
+Why open: Without schema, the graph may become arbitrary text. The first script semantics pass showed that `runtime` and `automation_type` cannot be trusted from path or static feature flags alone. For example, `bin/run-job` is semantically a run-job executor, non-empty `scripts/pipelines/*.sh` are semantic pipelines only when they implement the `JOB_ROOT` input/work/output contract, `scripts/lib/*.sh` are sourced modules, `scripts/helpers/*.sh` are executable helpers, Git apply scripts are controlled Git workflows, and `generate-toolbox-inventory.sh` is semantically a generator even when path/phase metadata is shallow.
 
-Needed diagnosis: Sample entities from the lote 1 service maps and script inventory.
+Needed diagnosis: Sample entities from the lote 1 service maps, raw script inventory, `toolbox_inventory_v0`, and a controlled semantic script inventory pass that distinguishes path-level classification from source-body semantics and runtime-validated behavior.
 
 Candidate ADR: Yes.
 
@@ -186,9 +186,9 @@ Status: `needs diagnosis`
 
 Question: Should each graph relation include source, confidence, observed time, evidence path, and generating command?
 
-Why open: Relations without evidence can become undocumented assumptions. The first `toolbox_inventory_v0` output records reports and TSVs as evidence fields and explicitly treats relation hints as non-authoritative hints, not graph edges.
+Why open: Relations without evidence can become undocumented assumptions. The first `toolbox_inventory_v0` output records reports and TSVs as evidence fields and explicitly treats relation hints as non-authoritative hints, not graph edges. The semantic script pass reinforced that source-body evidence is stronger than path or text-mention flags, but still weaker than runtime-validated behavior.
 
-Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, and explicit generation rules should support confidence and provenance.
+Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, source-body semantics, runtime validation, and explicit generation rules should support confidence and provenance.
 
 Candidate ADR: Yes.
 
