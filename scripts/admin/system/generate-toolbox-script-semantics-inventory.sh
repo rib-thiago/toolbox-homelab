@@ -23,27 +23,44 @@ OUT_REPORT="$REPORT_DIR/toolbox_script_semantics_inventory_report_$STAMP.txt"
 
 SOURCE_INVENTORY=""
 RAW_SCRIPT_INVENTORY=""
+SCOPE_NAME="block1-core-platform"
 
 usage() {
   cat <<'EOF'
 Usage:
   generate-toolbox-script-semantics-inventory.sh
+  generate-toolbox-script-semantics-inventory.sh --scope block1-core-platform
+  generate-toolbox-script-semantics-inventory.sh --scope block2-admin-system-git
   generate-toolbox-script-semantics-inventory.sh --source-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --raw-script-inventory PATH
-  generate-toolbox-script-semantics-inventory.sh --source-inventory PATH --raw-script-inventory PATH
+  generate-toolbox-script-semantics-inventory.sh --scope SCOPE --source-inventory PATH --raw-script-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --help
 
-Generate toolbox_script_semantics_inventory_v0 for the Block 1 core/platform scope.
+Generate toolbox_script_semantics_inventory_v0 for a named bounded source scope.
 
 This generator reads source bodies only. It does not execute scoped scripts, pipelines,
 run-job, validators, diagnostics, apply workflows, services, media paths, configs,
 secrets, credentials, or backup repositories.
 
-Block 1 scope is deterministic and bounded to:
+Supported scopes:
+  block1-core-platform       bin/*, scripts/helpers/*, scripts/lib/*, scripts/pipelines/*
+  block2-admin-system-git    scripts/admin/system/*, scripts/admin/git/*
+
+Default scope:
+  block1-core-platform
+
+Block scopes are deterministic and bounded. They do not expand to live services,
+media, configs, secrets, credentials, backup repositories, or unrelated paths.
+
+Block 1 scope:
   bin/*
   scripts/helpers/*
   scripts/lib/*
   scripts/pipelines/*
+
+Block 2 scope:
+  scripts/admin/system/*
+  scripts/admin/git/*
 
 Outputs:
   /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
@@ -56,6 +73,14 @@ build_block1_scope() {
   (
     cd "$APP_DIR" || exit 1
     find bin scripts/helpers scripts/lib scripts/pipelines -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
+      | sort
+  )
+}
+
+build_block2_scope() {
+  (
+    cd "$APP_DIR" || exit 1
+    find scripts/admin/system scripts/admin/git -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
       | sort
   )
 }
@@ -174,6 +199,20 @@ parse_args() {
         fi
         RAW_SCRIPT_INVENTORY="$1"
         ;;
+      --scope)
+        shift
+        if [ "$#" -eq 0 ]; then
+          fail "Missing value for --scope."
+        fi
+        case "$1" in
+          block1-core-platform|block2-admin-system-git)
+            SCOPE_NAME="$1"
+            ;;
+          *)
+            fail "Unsupported scope: $1"
+            ;;
+        esac
+        ;;
       -h|--help)
         usage
         exit 0
@@ -222,6 +261,8 @@ run_generation() {
   local git_branch
   local git_commit
   local git_status
+  local scope_batch
+  local -a selected_scope
 
   source_report="$(infer_report_for_inventory "$SOURCE_INVENTORY")"
   raw_script_report="$(infer_report_for_raw_script_inventory "$RAW_SCRIPT_INVENTORY")"
@@ -229,12 +270,25 @@ run_generation() {
   git_commit="$(git_commit_value)"
   git_status="$(git_status_value)"
 
-  mapfile -t block1_scope < <(build_block1_scope)
-  if [ "${#block1_scope[@]}" -eq 0 ]; then
-    fail "Block 1 scope collector found no files."
+  case "$SCOPE_NAME" in
+    block1-core-platform)
+      scope_batch="block1_core_platform_v0"
+      mapfile -t selected_scope < <(build_block1_scope)
+      ;;
+    block2-admin-system-git)
+      scope_batch="block2_admin_system_git_v0"
+      mapfile -t selected_scope < <(build_block2_scope)
+      ;;
+    *)
+      fail "Unsupported scope: $SCOPE_NAME"
+      ;;
+  esac
+
+  if [ "${#selected_scope[@]}" -eq 0 ]; then
+    fail "Scope collector found no files for: $SCOPE_NAME"
   fi
 
-  python3 - "$APP_DIR" "$GENERATED_AT" "$RAW_SCRIPT_INVENTORY" "$raw_script_report" "$SOURCE_INVENTORY" "$source_report" "$RAW_OUT_TSV" "$NORMALIZED_OUT_TSV" "$OUT_REPORT" "$GENERATOR_SCRIPT" "$git_branch" "$git_commit" "$git_status" "${block1_scope[@]}" <<'PY'
+  python3 - "$APP_DIR" "$GENERATED_AT" "$RAW_SCRIPT_INVENTORY" "$raw_script_report" "$SOURCE_INVENTORY" "$source_report" "$RAW_OUT_TSV" "$NORMALIZED_OUT_TSV" "$OUT_REPORT" "$GENERATOR_SCRIPT" "$git_branch" "$git_commit" "$git_status" "$scope_batch" "${selected_scope[@]}" <<'PY'
 from __future__ import annotations
 
 from collections import Counter
@@ -256,10 +310,10 @@ generator_script = sys.argv[10]
 git_branch = sys.argv[11] or "unknown"
 git_commit = sys.argv[12] or "unknown"
 git_status = sys.argv[13] or "unknown"
-scope_paths = list(sys.argv[14:])
+scope_batch = sys.argv[14] or "unknown_scope"
+scope_paths = list(sys.argv[15:])
 
 semantic_schema = "toolbox_script_semantics_inventory_v0"
-scope_batch = "block1_core_platform_v0"
 
 raw_columns = [
     "semantic_schema_version",
@@ -375,6 +429,28 @@ def path_entity_type(path: str) -> str:
         return "helper"
     return "script"
 
+def output_destination_findings(text: str) -> tuple[list[str], list[str], list[str], list[str]]:
+    warnings: list[str] = []
+    implemented: list[str] = []
+    targets: list[str] = []
+    basis: list[str] = []
+    if "$HOME/relatorios-disco" in text or "relatorios-disco" in text:
+        warnings.append("legacy destination: $HOME/relatorios-disco")
+        implemented.append("destination_policy_legacy_home_reports")
+        targets.append("$HOME/relatorios-disco")
+        basis.append("source_body_legacy_home_report_destination")
+    if "/srv/toolbox/shared/reports/media" in text or 'reports/media' in text:
+        warnings.append("provisional destination: /srv/toolbox/shared/reports/media")
+        implemented.append("destination_policy_provisional_reports_media")
+        targets.append("/srv/toolbox/shared/reports/media")
+        basis.append("source_body_provisional_report_destination")
+    if "/srv/toolbox/shared/library-db/raw" in text and "/srv/toolbox/shared/library-db/raw/system" not in text and "/srv/toolbox/shared/library-db/raw/git" not in text:
+        warnings.append("provisional destination: /srv/toolbox/shared/library-db/raw")
+        implemented.append("destination_policy_provisional_raw_root")
+        targets.append("/srv/toolbox/shared/library-db/raw")
+        basis.append("source_body_provisional_raw_destination")
+    return warnings, implemented, targets, basis
+
 def subdomain_for(path: str, raw_row: dict[str, str]) -> str:
     if raw_row.get("domain"):
         return raw_row["domain"]
@@ -425,6 +501,128 @@ def external_commands(text: str) -> list[str]:
         candidates.append("google.cloud.translate_v2")
     return candidates
 
+def executable_lines(text: str) -> list[str]:
+    lines: list[str] = []
+    heredoc_end = ""
+
+    for raw_line in text.splitlines():
+        stripped = raw_line.strip()
+
+        if heredoc_end:
+            if stripped == heredoc_end:
+                heredoc_end = ""
+            continue
+
+        heredoc_match = re.search(r"<<-?\s*['\"]?([A-Za-z_][A-Za-z0-9_]*)['\"]?", raw_line)
+        if heredoc_match:
+            heredoc_end = heredoc_match.group(1)
+            continue
+
+        if not stripped or stripped.startswith("#") or stripped.startswith("#!"):
+            continue
+
+        lines.append(stripped)
+
+    return lines
+
+def line_has_git_action(line: str, actions: set[str]) -> bool:
+    escaped = "|".join(re.escape(action) for action in sorted(actions))
+    match = re.search(rf"(^|[;&|(){{}}])\s*(command\s+)?git(\s+-C\s+\S+)?\s+({escaped})(\s|$)", line)
+    if not match:
+        return False
+    action = match.group(4)
+    if action == "tag" and re.search(r"(^|[;&|(){}])\s*(command\s+)?git(\s+-C\s+\S+)?\s+tag\s*(\||;|\)|$|--list|-l)", line):
+        return False
+    return True
+
+def line_is_weak_text_writer(line: str) -> bool:
+    return bool(re.match(r"^(printf|echo|cat\s+<<|append_cmd|append_command|append_shell|write_step|write_check|record|tsv_row|section|subsection|validate_[A-Za-z0-9_]+)\b", line))
+
+def line_mentions_shell_profile(line: str) -> bool:
+    tokens = [
+        ".bashrc",
+        ".profile",
+        ".bash_aliases",
+        ".bashrc.d",
+        ".bash_aliases.d",
+        "$ALIAS_DIR",
+        "$DEV_FILE",
+        "$ARTIFACTS_FILE",
+        "$JOBS_FILE",
+    ]
+    return any(token in line for token in tokens)
+
+def line_modifies_shell_profile(line: str) -> bool:
+    if line_is_weak_text_writer(line) or not line_mentions_shell_profile(line):
+        return False
+    return bool(
+        re.search(r"(^|[;&|(){}\s])(cp|mv|rm|mkdir|chmod|install|touch)\b", line)
+        or re.search(r"(^|[;&|(){}\s])sed\s+-i\b", line)
+        or re.search(r"(>|>>)\s*\"\$?(ALIAS_DIR|DEV_FILE|ARTIFACTS_FILE|JOBS_FILE)", line)
+        or re.search(r"(>|>>)\s*.*(\.bashrc|\.profile|\.bash_aliases|\.bashrc\.d|\.bash_aliases\.d)", line)
+    )
+
+def line_checks_shell_profile(line: str) -> bool:
+    return line_mentions_shell_profile(line) and not line_modifies_shell_profile(line)
+
+def line_mentions_manpage_access(line: str) -> bool:
+    tokens = ["MANPATH", "tbman", "mandb"]
+    return any(token in line for token in tokens)
+
+def line_modifies_manpage_access(line: str) -> bool:
+    if line_is_weak_text_writer(line) or not line_mentions_manpage_access(line):
+        return False
+    return bool(
+        re.search(r"(^|[;&|(){}\s])(cp|ln|chmod|mkdir|install|touch)\b", line)
+        or re.search(r"(^|[;&|(){}\s])update-alternatives\b", line)
+        or re.search(r"(^|[;&|(){}\s])tbman\s+.*\b(install|apply|link|enable)\b", line)
+    )
+
+def line_checks_manpage_access(line: str) -> bool:
+    return line_mentions_manpage_access(line) and not line_modifies_manpage_access(line)
+
+def line_has_host_change(line: str) -> bool:
+    if line_is_weak_text_writer(line):
+        return False
+
+    patterns = [
+        r"(^|[;&|(){}\s])sudo\s+apt\s+(update|install|remove|purge|autoremove)\b",
+        r"(^|[;&|(){}\s])apt\s+(install|remove|purge|autoremove)\b",
+        r"(^|[;&|(){}\s])pipx\s+install\b",
+        r"(^|[;&|(){}\s])hostnamectl\s+set-hostname\b",
+        r"(^|[;&|(){}\s])snap\s+remove\b",
+    ]
+    return (
+        any(re.search(pattern, line) for pattern in patterns)
+        or line_modifies_shell_profile(line)
+        or line_modifies_manpage_access(line)
+    )
+
+def has_executable_git_action(lines: list[str], actions: set[str]) -> bool:
+    return any(line_has_git_action(line, actions) and not line_is_weak_text_writer(line) for line in lines)
+
+def has_planned_git_action(text: str, actions: set[str]) -> bool:
+    if not re.search(r"(plan|planned|proposed|next commands|append_cmd|write_step|report)", text, re.IGNORECASE):
+        return False
+    action_re = "|".join(re.escape(action) for action in sorted(actions))
+    return bool(re.search(rf"\bgit\s+({action_re})\b", text))
+
+def actual_confirmation_gate(text: str, lines: list[str]) -> bool:
+    strong_lines = [line for line in lines if not line_is_weak_text_writer(line)]
+    joined = "\n".join(strong_lines)
+    return bool(
+        re.search(r"read\s+-r\s+\w*confirmation", joined)
+        or re.search(r"\[\s*\"\$\w*(confirmation|APPLY_MODE|arg_confirmation)\w*\"\s*(!=|=)\s*\"(APPLY|COMMIT|PUSH|--apply)\"", joined)
+        or re.search(r"case\s+\"\$\{?1[^\"\n]*\}?\"", joined)
+        and any("--apply)" in line or "--push)" in line for line in strong_lines)
+    )
+
+def script_has_apply_behavior(name: str, lines: list[str]) -> bool:
+    return name.startswith("apply-") or (
+        actual_confirmation_gate("", lines)
+        and any(line_has_host_change(line) or line_has_git_action(line, {"add", "rm", "reset", "commit", "tag", "push"}) for line in lines)
+    )
+
 def helper_summary(path: str, externals: list[str], text: str) -> str:
     if path.endswith("/exif.sh"):
         return "Reads image metadata with exiftool and can write a metadata-stripped output copy."
@@ -439,6 +637,316 @@ def helper_summary(path: str, externals: list[str], text: str) -> str:
     if path.endswith("/translate.sh"):
         return "Translates text through the Google Cloud Translate Python client."
     return first_comment_summary(text)
+
+def admin_summary(path: str, semantic_entity_type: str, text: str) -> str:
+    name = Path(path).name
+    comment = first_comment_summary(text)
+    if semantic_entity_type == "generator":
+        if "generate-toolbox-inventory" in name:
+            return "Transforms raw Toolbox script inventory evidence into toolbox_inventory_v0 artifacts."
+        if "generate-toolbox-script-semantics-inventory" in name:
+            return "Reads bounded source-body scopes and writes raw, normalized, and report semantic inventory artifacts."
+        if "diagnose-toolbox-script-inventory" in name:
+            return "Scans Toolbox source files and writes raw script inventory TSV/report evidence."
+    if semantic_entity_type == "validator":
+        return comment if comment != "unknown" else "Validates Toolbox knowledge, documentation, policy, service, script, or shell-helper consistency and writes evidence."
+    if semantic_entity_type == "diagnostic":
+        return comment if comment != "unknown" else "Runs a read-oriented Toolbox or host diagnostic and writes report/TSV evidence."
+    if semantic_entity_type == "plan":
+        return comment if comment != "unknown" else "Produces a plan or dry-run evidence artifact without applying changes."
+    if semantic_entity_type == "apply_workflow":
+        return comment if comment != "unknown" else "Approval-required host-changing workflow; source body indicates apply behavior."
+    if semantic_entity_type == "stage_workflow":
+        return comment if comment != "unknown" else "Controlled Git index staging workflow with explicit file scope and confirmation gate."
+    if semantic_entity_type == "git_workflow":
+        return comment if comment != "unknown" else "Controlled Git workflow with generated report/TSV evidence and confirmation gates where required."
+    if semantic_entity_type == "backup_snapshot":
+        return comment if comment != "unknown" else "Creates documentation backup, snapshot, report, or TSV evidence."
+    if semantic_entity_type == "audit":
+        return comment if comment != "unknown" else "Audits host, repository, or Toolbox structure and writes human-readable evidence."
+    if name == "collect-git-commit-context.sh":
+        return "Collects Git status, recent commit context, selected diffs, and repository change evidence for review."
+    if name == "git-context-report.sh":
+        return "Generates Git repository context, history, diff, and dashboard reports without writing Git history."
+    if name == "remove-snap-stack-safe.sh":
+        return "Legacy host-changing support tool that removes selected snap packages and writes a system report."
+    if name == "rename-host-homelab.sh":
+        return "Legacy host-changing support tool that backs up host files and renames the host."
+    return comment
+
+def classify_block2(path: str, text: str, raw_row: dict[str, str], warnings: list[str], implemented: list[str], relation_types: list[str], relation_targets: list[str], relation_basis: list[str], reads_paths: list[str], writes_paths: list[str], evidence_outputs: list[str]) -> dict[str, str] | None:
+    name = Path(path).name
+    phase = raw_row.get("phase", "") or ""
+    lines = executable_lines(text)
+    exec_text = "\n".join(lines)
+
+    if not (path.startswith("scripts/admin/system/") or path.startswith("scripts/admin/git/")):
+        return None
+
+    semantic_entity_type = "support_tool"
+    semantic_automation_type = "support tool"
+    semantic_runtime = "host"
+    semantic_confidence = "source_contract_high"
+    confirmation_gate = "no"
+    side_effect_class = "source_read_only_analysis"
+    entrypoint_style = "cli"
+    argument_contract = "script-specific CLI arguments"
+
+    if name.startswith("validate-"):
+        semantic_entity_type = "validator"
+        semantic_automation_type = "validator"
+    elif name.startswith("diagnose-"):
+        if name == "diagnose-toolbox-script-inventory.sh":
+            semantic_entity_type = "generator"
+            semantic_automation_type = "generator"
+            implemented.append("raw_script_inventory_generator")
+            relation_types.extend(["reads_scripts", "writes_report", "writes_tsv"])
+            relation_targets.extend(["bin", "scripts", "/srv/toolbox/shared/reports/system", "/srv/toolbox/shared/library-db/raw/system"])
+            relation_basis.extend(["source_body_scan_roots", "source_body_report_output", "source_body_tsv_output"])
+        else:
+            semantic_entity_type = "diagnostic"
+            semantic_automation_type = "diagnostic"
+    elif name.startswith("generate-"):
+        semantic_entity_type = "generator"
+        semantic_automation_type = "generator"
+    elif name.startswith("plan-") or phase == "plan":
+        semantic_entity_type = "plan"
+        semantic_automation_type = "plan"
+    elif name.startswith("stage-"):
+        semantic_entity_type = "stage_workflow"
+        semantic_automation_type = "staging workflow"
+        confirmation_gate = "yes"
+        implemented.append("git_index_staging_workflow")
+    elif script_has_apply_behavior(name, lines):
+        if path.startswith("scripts/admin/git/"):
+            semantic_entity_type = "git_workflow"
+            semantic_automation_type = "Git workflow"
+        else:
+            semantic_entity_type = "apply_workflow"
+            semantic_automation_type = "apply workflow"
+        confirmation_gate = "yes"
+        side_effect_class = "approval_required_host_or_git_change_candidate"
+        implemented.append("approval_required_apply_workflow")
+    elif name.startswith("audit-"):
+        semantic_entity_type = "audit"
+        semantic_automation_type = "audit"
+    elif name.startswith("backup-") or "SNAPSHOT" in exec_text or "snapshot" in name:
+        semantic_entity_type = "backup_snapshot"
+        semantic_automation_type = "backup/snapshot"
+    elif name.startswith("collect-") or name.endswith("-report.sh"):
+        semantic_entity_type = "support_tool"
+        semantic_automation_type = "support tool"
+
+    is_plan = semantic_entity_type == "plan" or name.startswith("plan-")
+    is_diagnostic = semantic_entity_type == "diagnostic" or name.startswith("diagnose-")
+
+    if has_executable_git_action(lines, {"add", "rm", "reset"}):
+        relation_types.append("writes_git_index")
+        relation_targets.append("git index")
+        relation_basis.append("source_body_executable_git_index_command")
+        warnings.append("Git index modification candidate")
+    elif is_plan and has_planned_git_action(text, {"add", "rm", "reset"}):
+        relation_types.append("plans_git_index_change")
+        relation_targets.append("git index")
+        relation_basis.append("source_body_plan_or_report_text")
+
+    if has_executable_git_action(lines, {"commit", "tag"}):
+        relation_types.append("writes_git_history")
+        relation_targets.append("git history")
+        relation_basis.append("source_body_executable_git_history_command")
+        warnings.append("Git history modification candidate")
+    elif is_plan and has_planned_git_action(text, {"commit", "tag"}):
+        relation_types.append("plans_git_history_change")
+        relation_targets.append("git history")
+        relation_basis.append("source_body_plan_or_report_text")
+    elif any(re.search(r"(^|[;&|(){}\s])git(\s+-C\s+\S+)?\s+(log|show|rev-parse|diff)\b", line) for line in lines):
+        relation_types.append("reads_git_history")
+        relation_targets.append("git history")
+        relation_basis.append("source_body_git_history_read_command")
+
+    if has_executable_git_action(lines, {"push"}):
+        relation_types.append("pushes_remote")
+        relation_targets.append("git remote")
+        relation_basis.append("source_body_executable_git_push")
+        warnings.append("Git remote push candidate")
+    elif is_plan and has_planned_git_action(text, {"push"}):
+        relation_types.append("plans_remote_push")
+        relation_targets.append("git remote")
+        relation_basis.append("source_body_plan_or_report_text")
+    elif any(re.search(r"(^|[;&|(){}\s])git(\s+-C\s+\S+)?\s+(remote|ls-remote|branch|rev-parse)\b", line) for line in lines):
+        relation_types.append("checks_git_remote")
+        relation_targets.append("git remote")
+        relation_basis.append("source_body_git_remote_check_command")
+
+    if actual_confirmation_gate(text, lines):
+        relation_types.append("requires_confirmation")
+        relation_targets.append("operator confirmation")
+        relation_basis.append("source_body_executable_confirmation_gate")
+        confirmation_gate = "yes"
+
+    shell_profile_modifies = any(line_modifies_shell_profile(line) for line in lines)
+    shell_profile_checks = any(line_checks_shell_profile(line) for line in lines)
+    shell_profile_apply_via_variable = (
+        semantic_entity_type == "apply_workflow"
+        and any(line_mentions_shell_profile(line) for line in lines)
+        and any(re.search(r"(>|>>)\s*\"\$file\"|cp\s+-a\s+\"\$file\"|replace_marked_block\b", line) for line in lines)
+    )
+    manpage_modifies = any(line_modifies_manpage_access(line) for line in lines)
+    manpage_checks = any(line_checks_manpage_access(line) for line in lines)
+    host_change_lines = [line for line in lines if line_has_host_change(line)]
+    if shell_profile_apply_via_variable:
+        host_change_lines.append("shell_profile_variable_write")
+    if host_change_lines and (semantic_entity_type == "apply_workflow" or name.startswith(("remove-", "rename-")) or actual_confirmation_gate(text, lines)):
+        relation_types.append("touches_host_state_candidate")
+        relation_targets.append("host state")
+        relation_basis.append("source_body_executable_host_modification_command")
+        side_effect_class = "approval_required_host_change_candidate"
+        warnings.append("host-changing apply workflow candidate")
+    if any(re.search(r"(^|[;&|(){}\s])sudo\s+apt\s+(update|install|remove|purge|autoremove)\b|(^|[;&|(){}\s])pipx\s+install\b", line) for line in lines):
+        warnings.append("package installation candidate")
+    if is_plan and any(line_mentions_shell_profile(line) for line in lines):
+        relation_types.append("plans_shell_profile_change")
+        relation_targets.append("shell profile or alias files")
+        relation_basis.append("source_body_plan_or_report_text")
+    elif shell_profile_modifies or shell_profile_apply_via_variable:
+        relation_types.append("modifies_shell_profile_candidate")
+        relation_targets.append("shell profile or alias files")
+        relation_basis.append("source_body_executable_shell_profile_modification")
+        if not is_diagnostic:
+            warnings.append("shell profile modification candidate")
+    elif shell_profile_checks:
+        relation_types.append("checks_shell_profile")
+        relation_targets.append("shell profile or alias files")
+        relation_basis.append("source_body_shell_profile_check")
+    if any("hostnamectl set-hostname" in line for line in lines):
+        warnings.append("hostname modification candidate")
+    if any(re.search(r"(^|[;&|(){}\s])snap\s+remove\b", line) for line in lines):
+        warnings.append("snap modification candidate")
+    if is_plan and any(line_mentions_manpage_access(line) for line in lines):
+        relation_types.append("plans_manpage_access_change")
+        relation_targets.append("manpage access paths")
+        relation_basis.append("source_body_plan_or_report_text")
+    elif manpage_modifies:
+        relation_types.append("modifies_manpage_access_candidate")
+        relation_targets.append("manpage access paths")
+        relation_basis.append("source_body_executable_manpage_access_modification")
+        if not is_diagnostic:
+            warnings.append("manpage access modification candidate")
+    elif manpage_checks:
+        relation_types.append("checks_manpage_access")
+        relation_targets.append("manpage access paths")
+        relation_basis.append("source_body_manpage_access_check")
+
+    if "/srv/toolbox/shared/reports/system" in exec_text:
+        writes_paths.append("/srv/toolbox/shared/reports/system")
+        evidence_outputs.append("system report")
+        relation_types.append("writes_report")
+        relation_targets.append("/srv/toolbox/shared/reports/system")
+        relation_basis.append("source_body_report_output")
+    if "/srv/toolbox/shared/library-db/raw/system" in exec_text:
+        writes_paths.append("/srv/toolbox/shared/library-db/raw/system")
+        evidence_outputs.append("system TSV")
+        relation_types.append("writes_tsv")
+        relation_targets.append("/srv/toolbox/shared/library-db/raw/system")
+        relation_basis.append("source_body_tsv_output")
+    if "/srv/toolbox/shared/reports/git" in exec_text:
+        writes_paths.append("/srv/toolbox/shared/reports/git")
+        evidence_outputs.append("git report")
+        relation_types.append("writes_report")
+        relation_targets.append("/srv/toolbox/shared/reports/git")
+        relation_basis.append("source_body_git_report_output")
+    if "/srv/toolbox/shared/library-db/raw/git" in exec_text:
+        writes_paths.append("/srv/toolbox/shared/library-db/raw/git")
+        evidence_outputs.append("git TSV")
+        relation_types.append("writes_tsv")
+        relation_targets.append("/srv/toolbox/shared/library-db/raw/git")
+        relation_basis.append("source_body_git_tsv_output")
+    if "/srv/toolbox/shared/inventory/toolbox" in exec_text:
+        writes_paths.append("/srv/toolbox/shared/inventory/toolbox")
+        evidence_outputs.append("normalized inventory TSV")
+        relation_types.append("writes_inventory")
+        relation_targets.append("/srv/toolbox/shared/inventory/toolbox")
+        relation_basis.append("source_body_inventory_output")
+    if "/srv/toolbox/shared/library-db/snapshots" in exec_text or "SNAPSHOT" in exec_text:
+        relation_types.append("writes_snapshot")
+        relation_targets.append("/srv/toolbox/shared/library-db/snapshots")
+        relation_basis.append("source_body_snapshot_output")
+        evidence_outputs.append("snapshot")
+
+    dest_warnings, dest_contracts, dest_targets, dest_basis = output_destination_findings(exec_text)
+    warnings.extend(dest_warnings)
+    implemented.extend(dest_contracts)
+    if dest_targets:
+        relation_types.append("uses_legacy_or_provisional_destination")
+        relation_targets.extend(dest_targets)
+        relation_basis.extend(dest_basis)
+
+    if "knowledge/" in exec_text:
+        reads_paths.append("knowledge/")
+        relation_types.append("reads_knowledge")
+        relation_targets.append("knowledge/")
+        relation_basis.append("source_body_knowledge_path")
+    if "docs/" in exec_text:
+        reads_paths.append("docs/")
+        relation_types.append("reads_docs")
+        relation_targets.append("docs/")
+        relation_basis.append("source_body_docs_path")
+    if "scripts/" in exec_text:
+        reads_paths.append("scripts/")
+        relation_types.append("reads_scripts")
+        relation_targets.append("scripts/")
+        relation_basis.append("source_body_scripts_path")
+    if "toolbox_script_inventory_" in exec_text:
+        reads_paths.append("toolbox_script_inventory_*.tsv")
+        relation_types.append("reads_source_inventory")
+        relation_targets.append("toolbox_script_inventory_*.tsv")
+        relation_basis.append("source_body_source_inventory_read")
+
+    if semantic_entity_type == "validator":
+        if "knowledge/" in exec_text:
+            relation_types.append("validates_knowledge")
+            relation_targets.append("knowledge/")
+            relation_basis.append("source_body_knowledge_validation")
+        if "docs/" in exec_text:
+            relation_types.append("validates_docs")
+            relation_targets.append("docs/")
+            relation_basis.append("source_body_docs_validation")
+        if "knowledge/services" in exec_text:
+            relation_types.append("validates_services")
+            relation_targets.append("knowledge/services")
+            relation_basis.append("source_body_services_validation")
+        implemented.append("validation_report_tsv_workflow")
+    if semantic_entity_type == "generator" and "toolbox_inventory_" in exec_text:
+        relation_types.append("writes_inventory")
+        relation_targets.append("/srv/toolbox/shared/inventory/toolbox")
+        relation_basis.append("source_body_inventory_output")
+        implemented.append("inventory_generator")
+    if "git " in exec_text or "git\t" in exec_text or "git -C" in exec_text:
+        relation_types.append("uses_git")
+        relation_targets.append("git")
+        relation_basis.append("source_body_git_command")
+
+    if semantic_entity_type in {"diagnostic", "validator", "generator", "plan", "audit", "support_tool", "backup_snapshot"} and not implemented:
+        implemented.append(f"{semantic_entity_type}_source_body_workflow")
+
+    if semantic_entity_type == "apply_workflow":
+        warnings.append("approval-required host-changing apply workflow")
+    if semantic_entity_type == "stage_workflow":
+        warnings.append("approval-required Git index staging workflow")
+
+    summary = admin_summary(path, semantic_entity_type, text)
+
+    return {
+        "semantic_entity_type": semantic_entity_type,
+        "semantic_runtime": semantic_runtime,
+        "semantic_automation_type": semantic_automation_type,
+        "semantic_confidence": semantic_confidence,
+        "confirmation_gate": confirmation_gate,
+        "side_effect_class": side_effect_class,
+        "entrypoint_style": entrypoint_style,
+        "argument_contract": argument_contract,
+        "summary": summary,
+    }
 
 def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dict[str, str]:
     warnings: list[str] = []
@@ -476,7 +984,8 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
     helper_cmds = helper_paths(text)
     toolbox_cmds = command_paths(text)
     externals = external_commands(text)
-    calls_git = "yes" if "git " in text or "git\t" in text else "no"
+    executable_text = "\n".join(executable_lines(text))
+    calls_git = "yes" if "git " in executable_text or "git\t" in executable_text or "git -C" in executable_text else "no"
 
     if not exists:
         warnings.append("scoped path missing")
@@ -645,6 +1154,37 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
             reads_paths.append("TEXT argument")
             writes_paths.append("translated text to stdout")
             implemented.append("translation_helper")
+    elif path.startswith("scripts/admin/system/") or path.startswith("scripts/admin/git/"):
+        block2 = classify_block2(
+            path,
+            text,
+            raw_row,
+            warnings,
+            implemented,
+            relation_types,
+            relation_targets,
+            relation_basis,
+            reads_paths,
+            writes_paths,
+            evidence_outputs,
+        )
+        if block2 is None:
+            semantic_entity_type = path_type
+            semantic_runtime = "unknown"
+            semantic_automation_type = "unknown"
+            semantic_confidence = "static_hint_low"
+            warnings.append("no block2 semantic rule matched")
+            summary = first_comment_summary(text)
+        else:
+            semantic_entity_type = block2["semantic_entity_type"]
+            semantic_runtime = block2["semantic_runtime"]
+            semantic_automation_type = block2["semantic_automation_type"]
+            semantic_confidence = block2["semantic_confidence"]
+            confirmation_gate = block2["confirmation_gate"]
+            side_effect_class = block2["side_effect_class"]
+            entrypoint_style = block2["entrypoint_style"]
+            argument_contract = block2["argument_contract"]
+            summary = block2["summary"]
     elif path.startswith("scripts/admin/git/"):
         semantic_entity_type = "git_workflow"
         semantic_runtime = "host"
