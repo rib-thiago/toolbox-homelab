@@ -24,27 +24,6 @@ OUT_REPORT="$REPORT_DIR/toolbox_script_semantics_inventory_report_$STAMP.txt"
 SOURCE_INVENTORY=""
 RAW_SCRIPT_INVENTORY=""
 
-# core_high_risk_v0: initial explicit source-body semantics scope.
-core_high_risk_v0=(
-  "scripts/admin/system/diagnose-toolbox-script-inventory.sh"
-  "scripts/admin/system/generate-toolbox-inventory.sh"
-  "bin/run-job"
-  "scripts/pipelines/pdf-ocr.sh"
-  "scripts/pipelines/image-ocr.sh"
-  "scripts/pipelines/image-ocr-translate.sh"
-  "scripts/pipelines/translate-text.sh"
-  "scripts/lib/common.sh"
-  "scripts/lib/jobs.sh"
-  "scripts/lib/logging.sh"
-  "scripts/lib/paths.sh"
-  "scripts/lib/reports.sh"
-  "scripts/lib/timestamps.sh"
-  "scripts/lib/tsv.sh"
-  "scripts/helpers/job-inspect.sh"
-  "scripts/admin/git/apply-toolbox-git-stage-check-commit.sh"
-  "scripts/admin/git/apply-toolbox-git-post-commit.sh"
-)
-
 usage() {
   cat <<'EOF'
 Usage:
@@ -54,17 +33,31 @@ Usage:
   generate-toolbox-script-semantics-inventory.sh --source-inventory PATH --raw-script-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --help
 
-Generate toolbox_script_semantics_inventory_v0 for the core_high_risk_v0 script scope.
+Generate toolbox_script_semantics_inventory_v0 for the Block 1 core/platform scope.
 
 This generator reads source bodies only. It does not execute scoped scripts, pipelines,
 run-job, validators, diagnostics, apply workflows, services, media paths, configs,
 secrets, credentials, or backup repositories.
+
+Block 1 scope is deterministic and bounded to:
+  bin/*
+  scripts/helpers/*
+  scripts/lib/*
+  scripts/pipelines/*
 
 Outputs:
   /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
   /srv/toolbox/shared/inventory/toolbox/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
   /srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_YYYYMMDD-HHMMSS.txt
 EOF
+}
+
+build_block1_scope() {
+  (
+    cd "$APP_DIR" || exit 1
+    find bin scripts/helpers scripts/lib scripts/pipelines -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
+      | sort
+  )
 }
 
 require_function() {
@@ -236,7 +229,12 @@ run_generation() {
   git_commit="$(git_commit_value)"
   git_status="$(git_status_value)"
 
-  python3 - "$APP_DIR" "$GENERATED_AT" "$RAW_SCRIPT_INVENTORY" "$raw_script_report" "$SOURCE_INVENTORY" "$source_report" "$RAW_OUT_TSV" "$NORMALIZED_OUT_TSV" "$OUT_REPORT" "$GENERATOR_SCRIPT" "$git_branch" "$git_commit" "$git_status" "${core_high_risk_v0[@]}" <<'PY'
+  mapfile -t block1_scope < <(build_block1_scope)
+  if [ "${#block1_scope[@]}" -eq 0 ]; then
+    fail "Block 1 scope collector found no files."
+  fi
+
+  python3 - "$APP_DIR" "$GENERATED_AT" "$RAW_SCRIPT_INVENTORY" "$raw_script_report" "$SOURCE_INVENTORY" "$source_report" "$RAW_OUT_TSV" "$NORMALIZED_OUT_TSV" "$OUT_REPORT" "$GENERATOR_SCRIPT" "$git_branch" "$git_commit" "$git_status" "${block1_scope[@]}" <<'PY'
 from __future__ import annotations
 
 from collections import Counter
@@ -261,7 +259,7 @@ git_status = sys.argv[13] or "unknown"
 scope_paths = list(sys.argv[14:])
 
 semantic_schema = "toolbox_script_semantics_inventory_v0"
-scope_batch = "core_high_risk_v0"
+scope_batch = "block1_core_platform_v0"
 
 raw_columns = [
     "semantic_schema_version",
@@ -402,6 +400,14 @@ def command_paths(text: str) -> list[str]:
     matches = set(re.findall(r"/toolbox/app/bin/[A-Za-z0-9._/-]+", text))
     return sorted(matches)
 
+def helper_paths(text: str) -> list[str]:
+    matches = set(re.findall(r"/toolbox/app/(scripts/helpers/[A-Za-z0-9._/-]+\.sh)", text))
+    return sorted(matches)
+
+def run_job_pipeline_name(text: str) -> str:
+    match = re.search(r"/toolbox/app/bin/run-job\s+([A-Za-z0-9._-]+)", text)
+    return match.group(1) if match else ""
+
 def sourced_libraries(text: str) -> list[str]:
     libs = set()
     for match in re.findall(r"source\s+[^'\"]*['\"]?([^'\"\n ]*scripts/lib/[A-Za-z0-9._/-]+\.sh)", text):
@@ -412,10 +418,27 @@ def sourced_libraries(text: str) -> list[str]:
 
 def external_commands(text: str) -> list[str]:
     candidates = []
-    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed"]:
+    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext"]:
         if re.search(rf"(^|[^A-Za-z0-9_/-]){re.escape(cmd)}($|[^A-Za-z0-9_-])", text):
             candidates.append(cmd)
+    if "google.cloud.translate_v2" in text:
+        candidates.append("google.cloud.translate_v2")
     return candidates
+
+def helper_summary(path: str, externals: list[str], text: str) -> str:
+    if path.endswith("/exif.sh"):
+        return "Reads image metadata with exiftool and can write a metadata-stripped output copy."
+    if path.endswith("/img-convert.sh"):
+        return "Converts or resizes images with ImageMagick magick and writes an explicit output file."
+    if path.endswith("/ocr.sh"):
+        return "Runs OCR on an image with tesseract and writes text to stdout or an output file."
+    if path.endswith("/pdf-images.sh"):
+        return "Extracts PDF pages to image files with pdftoppm."
+    if path.endswith("/pdf-text.sh"):
+        return "Extracts text from a PDF with pdftotext."
+    if path.endswith("/translate.sh"):
+        return "Translates text through the Google Cloud Translate Python client."
+    return first_comment_summary(text)
 
 def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dict[str, str]:
     warnings: list[str] = []
@@ -450,6 +473,7 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
 
     path_type = path_entity_type(path)
     libs = sourced_libraries(text)
+    helper_cmds = helper_paths(text)
     toolbox_cmds = command_paths(text)
     externals = external_commands(text)
     calls_git = "yes" if "git " in text or "git\t" in text else "no"
@@ -483,6 +507,39 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
         log_behavior = "captures pipeline stdout stderr to job log"
         semantic_confidence = "source_contract_high"
         summary = "Creates structured job directories, copies input, writes metadata/status, and dispatches a pipeline script by job type."
+    elif path.startswith("bin/"):
+        pipeline_name = run_job_pipeline_name(text)
+        if pipeline_name:
+            semantic_entity_type = "pipeline_launcher"
+            semantic_runtime = "container"
+            semantic_automation_type = "pipeline launcher"
+            implemented.append("run_job_pipeline_launcher")
+            entrypoint_style = "cli"
+            argument_contract = "INPUT [--env NAME=VALUE ...]" if "--env" in text else "pipeline input arguments"
+            relation_types.extend(["uses_run_job_entrypoint", "dispatches_pipeline"])
+            relation_targets.extend(["bin/run-job", f"scripts/pipelines/{pipeline_name}.sh"])
+            relation_basis.extend(["source_body_run_job_exec", "source_body_pipeline_name"])
+            semantic_confidence = "source_contract_high"
+            summary = f"Public command wrapper that launches the {pipeline_name} run-job pipeline."
+        elif helper_cmds:
+            semantic_entity_type = "command_wrapper"
+            semantic_runtime = "container"
+            semantic_automation_type = "wrapper to helper"
+            implemented.append("public_command_wrapper")
+            entrypoint_style = "cli"
+            argument_contract = "passes arguments through to helper"
+            relation_types.append("delegates_to_helper")
+            relation_targets.append(helper_cmds[0])
+            relation_basis.append("source_body_helper_exec")
+            semantic_confidence = "source_contract_high"
+            summary = f"Public command wrapper that delegates to {helper_cmds[0]}."
+        else:
+            semantic_entity_type = "command"
+            semantic_runtime = "unknown"
+            semantic_automation_type = "unknown"
+            semantic_confidence = "static_hint_low"
+            warnings.append("command path without recognized command semantics")
+            summary = first_comment_summary(text)
     elif path.startswith("scripts/pipelines/"):
         has_job_root = "JOB_ROOT" in text
         has_iwo = all(token in text for token in ["INPUT_DIR", "WORK_DIR", "OUTPUT_DIR"])
@@ -551,6 +608,43 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
         relation_basis.append("source_body_job_status_log_output_reads")
         semantic_confidence = "source_contract_high"
         summary = "Inspects Toolbox job status, first log lines, and output files by job type or path."
+    elif path.startswith("scripts/helpers/"):
+        semantic_entity_type = "helper"
+        semantic_runtime = "container"
+        semantic_automation_type = "atomic helper executable"
+        implemented.append("helper_executable")
+        entrypoint_style = "cli"
+        argument_contract = "helper-specific CLI arguments"
+        semantic_confidence = "source_contract_high"
+        summary = helper_summary(path, externals, text)
+        if externals:
+            relation_types.append("uses_external_dependency")
+            relation_targets.extend(externals)
+            relation_basis.append("source_body_external_command_or_import")
+        if path.endswith("/exif.sh"):
+            reads_paths.append("IMAGE")
+            writes_paths.append("OUTPUT copy when -remove-all is used")
+            implemented.append("metadata_read_write_copy_mode")
+        elif path.endswith("/img-convert.sh"):
+            reads_paths.append("INPUT image")
+            writes_paths.append("OUTPUT image")
+            implemented.append("image_conversion_helper")
+        elif path.endswith("/ocr.sh"):
+            reads_paths.append("IMAGE")
+            writes_paths.append("optional OCR output text file")
+            implemented.append("ocr_helper")
+        elif path.endswith("/pdf-images.sh"):
+            reads_paths.append("PDF")
+            writes_paths.append("output image directory")
+            implemented.append("pdf_page_image_extraction_helper")
+        elif path.endswith("/pdf-text.sh"):
+            reads_paths.append("PDF")
+            writes_paths.append("optional text output file")
+            implemented.append("pdf_text_extraction_helper")
+        elif path.endswith("/translate.sh"):
+            reads_paths.append("TEXT argument")
+            writes_paths.append("translated text to stdout")
+            implemented.append("translation_helper")
     elif path.startswith("scripts/admin/git/"):
         semantic_entity_type = "git_workflow"
         semantic_runtime = "host"
