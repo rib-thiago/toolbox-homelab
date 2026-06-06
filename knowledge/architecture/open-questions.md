@@ -146,7 +146,7 @@ Question: What command or workflow will produce `knowledge/graph/entities.yaml` 
 
 Why open: The graph model is conceptually defined but not implemented. Inventory must precede graph generation, and graph relations must be derived from dated evidence, inventory rows, relation hints, service maps, policies, and explicit graph-generation rules rather than memory or manually invented assumptions. The first semantic script pass showed that raw script inventory and `toolbox_inventory_v0` are useful but still too shallow for graph generation: path-level classification is not semantic classification, static script text is not runtime-validated behavior, and relation hints are not graph edges.
 
-Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the intermediate semantic inventory layer needed before non-authoritative relation hints or evidence fields can become proposed graph entities and relations.
+Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the intermediate semantic inventory layer needed before non-authoritative relation hints or evidence fields can become proposed graph entities and relations. The graph remains blocked until semantic inventory coverage expands beyond the core/high-risk scope, runtime validation evidence is modeled separately, and relation-candidate promotion rules are defined.
 
 Candidate ADR: Yes.
 
@@ -160,7 +160,7 @@ Question: What schema should represent services, scripts, paths, reports, TSVs, 
 
 Why open: Without schema, the graph may become arbitrary text. The first script semantics pass showed that `runtime` and `automation_type` cannot be trusted from path or static feature flags alone. For example, `bin/run-job` is semantically a run-job executor, non-empty `scripts/pipelines/*.sh` are semantic pipelines only when they implement the `JOB_ROOT` input/work/output contract, `scripts/lib/*.sh` are sourced modules, `scripts/helpers/*.sh` are executable helpers, Git apply scripts are controlled Git workflows, and `generate-toolbox-inventory.sh` is semantically a generator even when path/phase metadata is shallow.
 
-Needed diagnosis: Sample entities from the lote 1 service maps, raw script inventory, `toolbox_inventory_v0`, and a controlled semantic script inventory pass that distinguishes path-level classification from source-body semantics and runtime-validated behavior.
+Needed diagnosis: Sample entities from the lote 1 service maps, raw script inventory, `toolbox_inventory_v0`, and a controlled semantic script inventory pass that distinguishes path-level classification from source-body semantics and runtime-validated behavior. Decide how semantic inventory expansion to all scripts should represent placeholders, legacy scripts, and modernization candidates without turning cleanup findings into graph facts.
 
 Candidate ADR: Yes.
 
@@ -188,7 +188,7 @@ Question: Should each graph relation include source, confidence, observed time, 
 
 Why open: Relations without evidence can become undocumented assumptions. The first `toolbox_inventory_v0` output records reports and TSVs as evidence fields and explicitly treats relation hints as non-authoritative hints, not graph edges. The semantic script pass reinforced that source-body evidence is stronger than path or text-mention flags, but still weaker than runtime-validated behavior.
 
-Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, source-body semantics, runtime validation, and explicit generation rules should support confidence and provenance.
+Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, source-body semantics, runtime validation, and explicit generation rules should support confidence and provenance. Define the future runtime-validation evidence layer and the review threshold for promoting relation candidates into accepted graph edges.
 
 Candidate ADR: Yes.
 
