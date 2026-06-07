@@ -31,6 +31,7 @@ Usage:
   generate-toolbox-script-semantics-inventory.sh
   generate-toolbox-script-semantics-inventory.sh --scope block1-core-platform
   generate-toolbox-script-semantics-inventory.sh --scope block2-admin-system-git
+  generate-toolbox-script-semantics-inventory.sh --scope block3-infrastructure-admin
   generate-toolbox-script-semantics-inventory.sh --source-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --raw-script-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --scope SCOPE --source-inventory PATH --raw-script-inventory PATH
@@ -45,6 +46,7 @@ secrets, credentials, or backup repositories.
 Supported scopes:
   block1-core-platform       bin/*, scripts/helpers/*, scripts/lib/*, scripts/pipelines/*
   block2-admin-system-git    scripts/admin/system/*, scripts/admin/git/*
+  block3-infrastructure-admin scripts/admin/backup/*, docker/*, firewall/*, network/*, storage/*
 
 Default scope:
   block1-core-platform
@@ -62,10 +64,17 @@ Block 2 scope:
   scripts/admin/system/*
   scripts/admin/git/*
 
+Block 3 scope:
+  scripts/admin/backup/*
+  scripts/admin/docker/*
+  scripts/admin/firewall/*
+  scripts/admin/network/*
+  scripts/admin/storage/*
+
 Outputs:
-  /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
-  /srv/toolbox/shared/inventory/toolbox/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
-  /srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_YYYYMMDD-HHMMSS.txt
+  /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_SCOPE_YYYYMMDD-HHMMSS.tsv
+  /srv/toolbox/shared/inventory/toolbox/toolbox_script_semantics_inventory_SCOPE_YYYYMMDD-HHMMSS.tsv
+  /srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_SCOPE_YYYYMMDD-HHMMSS.txt
 EOF
 }
 
@@ -81,6 +90,14 @@ build_block2_scope() {
   (
     cd "$APP_DIR" || exit 1
     find scripts/admin/system scripts/admin/git -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
+      | sort
+  )
+}
+
+build_block3_scope() {
+  (
+    cd "$APP_DIR" || exit 1
+    find scripts/admin/backup scripts/admin/docker scripts/admin/firewall scripts/admin/network scripts/admin/storage -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
       | sort
   )
 }
@@ -205,7 +222,7 @@ parse_args() {
           fail "Missing value for --scope."
         fi
         case "$1" in
-          block1-core-platform|block2-admin-system-git)
+          block1-core-platform|block2-admin-system-git|block3-infrastructure-admin)
             SCOPE_NAME="$1"
             ;;
           *)
@@ -281,6 +298,11 @@ run_generation() {
       scope_batch="block2_admin_system_git_v0"
       scope_slug="block2_admin_system_git"
       mapfile -t selected_scope < <(build_block2_scope)
+      ;;
+    block3-infrastructure-admin)
+      scope_batch="block3_infrastructure_admin_v0"
+      scope_slug="block3_infrastructure_admin"
+      mapfile -t selected_scope < <(build_block3_scope)
       ;;
     *)
       fail "Unsupported scope: $SCOPE_NAME"
@@ -415,7 +437,14 @@ def clean(value: object) -> str:
     return text if text else "unknown"
 
 def join_values(values: list[str]) -> str:
-    filtered = [clean(v) for v in values if clean(v) != "unknown"]
+    seen: set[str] = set()
+    filtered: list[str] = []
+    for value in values:
+        cleaned = clean(value)
+        if cleaned == "unknown" or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        filtered.append(cleaned)
     return ";".join(filtered) if filtered else "none"
 
 def read_tsv(path: Path, key: str) -> dict[str, dict[str, str]]:
@@ -501,7 +530,7 @@ def sourced_libraries(text: str) -> list[str]:
 
 def external_commands(text: str) -> list[str]:
     candidates = []
-    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext"]:
+    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext", "restic", "wipefs", "parted", "partprobe", "mkfs.ext4", "ufw", "iptables", "iptables-restore", "docker", "tailscale", "smartctl", "apt", "snap", "flatpak"]:
         if re.search(rf"(^|[^A-Za-z0-9_/-]){re.escape(cmd)}($|[^A-Za-z0-9_-])", text):
             candidates.append(cmd)
     if "google.cloud.translate_v2" in text:
@@ -955,6 +984,311 @@ def classify_block2(path: str, text: str, raw_row: dict[str, str], warnings: lis
         "summary": summary,
     }
 
+def line_is_dry_run(line: str) -> bool:
+    return "--dry-run" in line or "--assumeno" in line or "dry-run" in line.lower()
+
+def line_has_command(line: str, command_pattern: str) -> bool:
+    if line_is_weak_text_writer(line):
+        return False
+    return bool(re.search(rf"(^|[;&|(){{}}\s]){command_pattern}\b", line))
+
+def has_typed_confirmation(text: str, lines: list[str]) -> bool:
+    joined = "\n".join(line for line in lines if not line_is_weak_text_writer(line))
+    return bool(
+        re.search(r"read\s+-r\s+\w+", joined)
+        and re.search(r"\b(FORMATAR|APPLY|COMMIT|PUSH|DELETE|PURGE)\b", joined)
+    )
+
+def block3_summary(path: str, semantic_entity_type: str, text: str) -> str:
+    name = Path(path).name
+    comment = first_comment_summary(text)
+    if name == "backup-homelab.sh":
+        return "Runs a Restic homelab backup to the mounted backup repository and writes a legacy backup log."
+    if name == "prune-backup-homelab.sh":
+        return "Runs Restic retention, prune, check, and snapshot listing against the mounted backup repository."
+    if name == "format-backup-drive.sh":
+        return "Formats a removable backup drive after root, removable-device, and typed FORMATAR checks."
+    if name == "docker-user-policy.sh":
+        return "Multi-mode DOCKER-USER iptables policy tool with apply, rollback, and status modes."
+    if name == "configure-ufw-homelab.sh":
+        return "Applies a UFW homelab firewall policy by installing UFW, resetting rules, allowing selected ports, and enabling UFW."
+    if name.startswith("diagnose-"):
+        return comment if comment != "unknown" else "Runs a read-oriented infrastructure diagnostic over live host state and writes or prints evidence."
+    if name.startswith("inventory-"):
+        return comment if comment != "unknown" else "Generates a host infrastructure inventory report from live source-body targets."
+    if name.startswith("audit-"):
+        return comment if comment != "unknown" else "Audits infrastructure, package, storage, Docker, or service state and writes a legacy report."
+    if name.startswith("cleanup-deleted-safe"):
+        return "Analyzes deleted-vs-music TSV evidence and prepares cleanup target lists without deleting files."
+    if name.startswith("cleanup-"):
+        return comment if comment != "unknown" else "Runs a host cleanup workflow that may remove packages, snaps, flatpaks, or caches."
+    if name.startswith("reconcile-"):
+        return comment if comment != "unknown" else "Reconciles prior cleanup state and prints future manual cleanup commands without applying them."
+    if semantic_entity_type == "firewall_test":
+        return comment if comment != "unknown" else "Tests expected firewall and service reachability without changing firewall rules."
+    return comment
+
+def classify_block3(path: str, text: str, raw_row: dict[str, str], warnings: list[str], implemented: list[str], relation_types: list[str], relation_targets: list[str], relation_basis: list[str], reads_paths: list[str], writes_paths: list[str], evidence_outputs: list[str]) -> dict[str, str] | None:
+    name = Path(path).name
+    lines = executable_lines(text)
+    exec_text = "\n".join(lines)
+
+    if not path.startswith(("scripts/admin/backup/", "scripts/admin/docker/", "scripts/admin/firewall/", "scripts/admin/network/", "scripts/admin/storage/")):
+        return None
+
+    semantic_entity_type = "support_tool"
+    semantic_automation_type = "support tool"
+    semantic_runtime = "host"
+    semantic_confidence = "source_contract_high"
+    confirmation_gate = "yes" if has_typed_confirmation(text, lines) else "no"
+    side_effect_class = "source_read_only_analysis"
+    entrypoint_style = "cli"
+    argument_contract = "script-specific CLI arguments"
+
+    def add_relation(kind: str, target: str, basis: str) -> None:
+        relation_types.append(kind)
+        relation_targets.append(target)
+        relation_basis.append(basis)
+
+    def add_read(path_value: str, relation: str, target: str, basis: str) -> None:
+        reads_paths.append(path_value)
+        add_relation(relation, target, basis)
+
+    if path.startswith("scripts/admin/backup/"):
+        if name == "backup-homelab.sh":
+            semantic_entity_type = "backup_workflow"
+            semantic_automation_type = "backup workflow"
+            implemented.append("restic_backup_workflow")
+        elif name == "prune-backup-homelab.sh":
+            semantic_entity_type = "backup_prune_workflow"
+            semantic_automation_type = "backup prune workflow"
+            implemented.append("restic_prune_workflow")
+        elif name == "format-backup-drive.sh":
+            semantic_entity_type = "disk_format_workflow"
+            semantic_automation_type = "disk format workflow"
+            implemented.append("removable_disk_format_workflow")
+        elif name.startswith("diagnose-"):
+            semantic_entity_type = "backup_diagnostic"
+            semantic_automation_type = "diagnostic"
+            implemented.append("backup_diagnostic_workflow")
+    elif path.startswith("scripts/admin/docker/"):
+        semantic_entity_type = "docker_diagnostic" if name.startswith("diagnose-") else "support_tool"
+        semantic_automation_type = "diagnostic" if name.startswith("diagnose-") else "support tool"
+        implemented.append("docker_diagnostic_workflow")
+    elif path.startswith("scripts/admin/firewall/"):
+        if name == "configure-ufw-homelab.sh":
+            semantic_entity_type = "firewall_apply_workflow"
+            semantic_automation_type = "firewall apply workflow"
+            implemented.append("ufw_apply_workflow")
+        elif name == "docker-user-policy.sh":
+            semantic_entity_type = "docker_user_policy_workflow"
+            semantic_automation_type = "Docker/iptables policy workflow"
+            implemented.append("docker_user_apply_rollback_status_modes")
+        elif name == "test-firewall-homelab.sh":
+            semantic_entity_type = "firewall_test"
+            semantic_automation_type = "firewall test"
+            implemented.append("firewall_reachability_test")
+        elif name.startswith("diagnose-"):
+            semantic_entity_type = "firewall_diagnostic"
+            semantic_automation_type = "diagnostic"
+            implemented.append("firewall_diagnostic_workflow")
+    elif path.startswith("scripts/admin/network/"):
+        if name.startswith("inventory-"):
+            semantic_entity_type = "network_inventory"
+            semantic_automation_type = "network inventory"
+            implemented.append("network_inventory_report")
+        elif name.startswith("diagnose-"):
+            semantic_entity_type = "network_diagnostic"
+            semantic_automation_type = "diagnostic"
+            implemented.append("network_diagnostic_workflow")
+    elif path.startswith("scripts/admin/storage/"):
+        if name == "cleanup-deleted-safe.sh":
+            semantic_entity_type = "cleanup_plan"
+            semantic_automation_type = "cleanup plan"
+            implemented.append("cleanup_target_list_generator")
+        elif name.startswith("cleanup-desktop") or name == "cleanup-light-homelab.sh":
+            semantic_entity_type = "cleanup_apply_workflow"
+            semantic_automation_type = "cleanup apply workflow"
+            implemented.append("host_cleanup_apply_workflow")
+        elif name.startswith("audit-") or name.startswith("reconcile-"):
+            semantic_entity_type = "storage_audit"
+            semantic_automation_type = "audit"
+            implemented.append("storage_audit_workflow")
+        elif name.startswith("diagnose-") or name.startswith("investigate-"):
+            semantic_entity_type = "storage_diagnostic"
+            semantic_automation_type = "diagnostic"
+            implemented.append("storage_diagnostic_workflow")
+
+    high_risk = False
+    compact_exec = re.sub(r"\\\n\s*", " ", exec_text)
+    compact_source = re.sub(r"\\\n\s*", " ", text)
+
+    if "restic" in exec_text:
+        add_relation("uses_restic", "restic", "source_body_restic_command")
+    if (
+        any(re.search(r"(^|[;&|(){}\s])restic\s+.*\bbackup\b", line) and not line_is_weak_text_writer(line) for line in lines)
+        or re.search(r"(^|\n)\s*restic\s+.*\bbackup\b", compact_exec)
+    ):
+        add_relation("writes_backup_repository_candidate", "/mnt/backup-homelab/restic-repo", "source_body_restic_backup")
+        warnings.append("backup repository modification candidate")
+        high_risk = True
+    if (
+        any(re.search(r"(^|[;&|(){}\s])restic\s+.*\b(forget|prune)\b.*--prune", line) and not line_is_weak_text_writer(line) for line in lines)
+        or re.search(r"(^|\n)\s*restic\s+.*\bforget\b.*--prune", compact_exec)
+        or re.search(r"(^|\n)\s*restic\s+.*\bprune\b", compact_exec)
+    ):
+        add_relation("prunes_backup_repository_candidate", "/mnt/backup-homelab/restic-repo", "source_body_restic_forget_prune")
+        warnings.append("backup prune candidate")
+        high_risk = True
+    if "restic" in exec_text or "/mnt/backup-homelab" in exec_text:
+        add_read("/mnt/backup-homelab", "reads_backup_state", "backup mount or restic repository", "source_body_backup_mount_or_repo")
+
+    if any(line_has_command(line, r"(sudo\s+)?(mkfs|mkfs\.ext4|wipefs|parted|partprobe)") for line in lines):
+        add_relation("formats_block_device_candidate", "block device", "source_body_block_device_format_command")
+        warnings.append("block device format candidate")
+        high_risk = True
+
+    if "ufw" in exec_text:
+        add_relation("uses_ufw", "ufw", "source_body_ufw_command")
+    if any(line_has_command(line, r"sudo\s+ufw") and re.search(r"\b(reset|enable|allow|default|deny|delete)\b", line) for line in lines):
+        add_relation("modifies_firewall_candidate", "ufw firewall rules", "source_body_ufw_modification_command")
+        warnings.append("firewall modification candidate")
+        high_risk = True
+    elif "ufw status" in exec_text:
+        add_relation("reads_firewall_state", "ufw", "source_body_ufw_status")
+
+    if "iptables" in exec_text:
+        add_relation("uses_iptables", "iptables", "source_body_iptables_command")
+    if any((line_has_command(line, r"sudo\s+iptables") and re.search(r"\s(-A|-F|-I|-D|-P|-N|-X|-R)\s", line)) or line_has_command(line, r"sudo\s+iptables-restore") for line in lines):
+        target = "DOCKER-USER iptables chain" if "DOCKER-USER" in exec_text else "iptables firewall rules"
+        add_relation("modifies_docker_user_chain_candidate" if "DOCKER-USER" in exec_text else "modifies_firewall_candidate", target, "source_body_iptables_modification_command")
+        warnings.append("Docker/iptables policy modification candidate" if "DOCKER-USER" in exec_text else "firewall modification candidate")
+        high_risk = True
+    if any(line_has_command(line, r"sudo\s+iptables-restore") for line in lines):
+        add_relation("rolls_back_iptables_candidate", "iptables rules", "source_body_iptables_restore")
+        warnings.append("iptables rollback candidate")
+        high_risk = True
+    elif "iptables -L" in exec_text or "iptables -S" in exec_text:
+        add_relation("reads_firewall_state", "iptables", "source_body_iptables_read")
+
+    package_cleanup_lines = [
+        line for line in lines
+        if not line_is_weak_text_writer(line)
+        and not line_is_dry_run(line)
+        and re.search(r"(^|[;&|(){}\s])sudo\s+apt\s+(purge|autoremove|clean)\b", line)
+    ]
+    if package_cleanup_lines:
+        add_relation("purges_packages_candidate", "APT package state", "source_body_apt_purge_autoremove_or_clean")
+        warnings.append("package purge/autoremove candidate")
+        high_risk = True
+    elif "apt autoremove" in exec_text or "apt purge" in exec_text or "apt clean" in exec_text:
+        add_relation("uses_apt", "apt", "source_body_apt_command")
+
+    if any(re.search(r"(^|[;&|(){}\s])sudo\s+snap\s+remove\b", line) and not line_is_weak_text_writer(line) for line in lines):
+        add_relation("removes_snap_or_flatpak_candidate", "snap package state", "source_body_snap_remove")
+        warnings.append("snap/flatpak removal candidate")
+        high_risk = True
+    if any(re.search(r"(^|[;&|(){}\s])flatpak\s+uninstall\s+-y\b", line) and not line_is_weak_text_writer(line) and not line_is_dry_run(line) for line in lines):
+        add_relation("removes_snap_or_flatpak_candidate", "flatpak package state", "source_body_flatpak_uninstall")
+        warnings.append("snap/flatpak removal candidate")
+        high_risk = True
+    if "snap " in exec_text:
+        add_relation("uses_snap", "snap", "source_body_snap_command")
+    if "flatpak " in exec_text:
+        add_relation("uses_flatpak", "flatpak", "source_body_flatpak_command")
+
+    if any(re.search(r"(^|[;&|(){}\s])rm\s+-rf\s+", line) and not line_is_weak_text_writer(line) for line in lines):
+        add_relation("cleans_cache_candidate", "filesystem cache or cleanup target", "source_body_rm_rf_cleanup")
+        warnings.append("cache cleanup candidate")
+        warnings.append("destructive cleanup candidate")
+        high_risk = True
+    if any(re.search(r"(^|[;&|(){}\s])sudo\s+apt\s+clean\b", line) and not line_is_weak_text_writer(line) for line in lines):
+        add_relation("cleans_cache_candidate", "APT cache", "source_body_apt_clean")
+        warnings.append("cache cleanup candidate")
+
+    if "docker " in exec_text:
+        add_relation("uses_docker", "docker", "source_body_docker_command")
+        add_relation("reads_docker_state", "Docker runtime state", "source_body_docker_read_or_inspect")
+    if "tailscale " in exec_text:
+        add_relation("uses_tailscale", "tailscale", "source_body_tailscale_command")
+        add_relation("reads_network_state", "Tailscale/network state", "source_body_tailscale_read")
+    if "smbstatus" in exec_text or "samba" in exec_text.lower():
+        add_relation("uses_samba", "samba", "source_body_samba_command_or_reference")
+    if "smartctl" in exec_text:
+        add_relation("uses_smartctl", "smartctl", "source_body_smartctl_command")
+        add_relation("reads_storage_state", "SMART/storage state", "source_body_smartctl_or_storage_read")
+
+    if any(token in exec_text for token in ["df ", "du ", "lsblk", "findmnt", "dmesg", "/srv", "/var/lib/docker", "/var/log", "/boot", "/usr/src", "/lib/modules"]):
+        add_relation("reads_storage_state", "host storage paths", "source_body_storage_read")
+    if any(token in exec_text for token in ["ip ", "ss ", "nc ", "curl ", "avahi", "/etc/hosts", "/etc/avahi"]):
+        add_relation("reads_network_state", "host network state", "source_body_network_read")
+    if any(token in exec_text for token in ["ufw status", "iptables -L", "iptables -S", "ss -tulpn"]):
+        add_relation("reads_firewall_state", "firewall/listening port state", "source_body_firewall_read")
+    if any(token in exec_text for token in ["/srv/toolbox/secrets", ".restic-password", "/srv/media", "/srv/compose", "/srv/data", "/mnt/backup-homelab"]):
+        add_relation("reads_sensitive_path_candidate", "sensitive host path names", "source_body_sensitive_path_reference")
+        warnings.append("reads sensitive path candidate")
+
+    if "$HOME/relatorios-backup" in text:
+        writes_paths.append("$HOME/relatorios-backup")
+        add_relation("uses_legacy_or_provisional_destination", "$HOME/relatorios-backup", "source_body_legacy_backup_report_destination")
+        warnings.append("legacy destination: $HOME/relatorios-backup")
+    if "$HOME/relatorios-disco" in text:
+        writes_paths.append("$HOME/relatorios-disco")
+        add_relation("uses_legacy_or_provisional_destination", "$HOME/relatorios-disco", "source_body_legacy_disk_report_destination")
+        warnings.append("legacy destination: $HOME/relatorios-disco")
+    if "/home/thiago/iptables-backups" in text:
+        writes_paths.append("/home/thiago/iptables-backups")
+        add_relation("uses_legacy_or_provisional_destination", "/home/thiago/iptables-backups", "source_body_legacy_iptables_backup_destination")
+        warnings.append("legacy destination: /home/thiago/iptables-backups")
+    has_canonical_report = (
+        "/srv/toolbox/shared/reports/" in text
+        or re.search(r"REPORT_DIR=.*reports/[A-Za-z0-9_/$\"{}.-]*", text)
+        and "SHARED_DIR" in text
+    )
+    has_canonical_tsv = (
+        "/srv/toolbox/shared/library-db/raw/" in text
+        or re.search(r"RAW_DIR=.*library-db/raw/[A-Za-z0-9_/$\"{}.-]*", text)
+        and "SHARED_DIR" in text
+    )
+    if has_canonical_report:
+        writes_paths.append("/srv/toolbox/shared/reports")
+        evidence_outputs.append("canonical report")
+        add_relation("writes_report", "/srv/toolbox/shared/reports", "source_body_canonical_report_output")
+        add_relation("writes_canonical_report", "/srv/toolbox/shared/reports", "source_body_canonical_report_output")
+    if has_canonical_tsv:
+        writes_paths.append("/srv/toolbox/shared/library-db/raw")
+        evidence_outputs.append("canonical TSV")
+        add_relation("writes_tsv", "/srv/toolbox/shared/library-db/raw", "source_body_canonical_tsv_output")
+        add_relation("writes_canonical_tsv", "/srv/toolbox/shared/library-db/raw", "source_body_canonical_tsv_output")
+    if "SNAPSHOT" in exec_text or "snapshot" in exec_text.lower():
+        add_relation("writes_snapshot", "snapshot or backup artifact", "source_body_snapshot_or_backup_reference")
+
+    expects_evidence = semantic_entity_type.endswith(("diagnostic", "audit")) or semantic_entity_type in {"network_inventory", "backup_workflow", "backup_prune_workflow", "cleanup_plan", "cleanup_apply_workflow", "firewall_test", "docker_user_policy_workflow"}
+    if expects_evidence and not any(rt in relation_types for rt in ["writes_report", "writes_canonical_report", "uses_legacy_or_provisional_destination"]):
+        warnings.append("canonical report/TSV missing where expected")
+
+    if high_risk:
+        side_effect_class = "approval_required_host_change_candidate"
+        if confirmation_gate == "yes":
+            add_relation("requires_confirmation", "operator confirmation", "source_body_typed_confirmation")
+        else:
+            add_relation("missing_or_weak_confirmation_candidate", "operator confirmation", "source_body_high_risk_without_typed_confirmation")
+            warnings.append("weak or missing typed confirmation for high-risk apply workflow")
+
+    summary = block3_summary(path, semantic_entity_type, text)
+
+    return {
+        "semantic_entity_type": semantic_entity_type,
+        "semantic_runtime": semantic_runtime,
+        "semantic_automation_type": semantic_automation_type,
+        "semantic_confidence": semantic_confidence,
+        "confirmation_gate": confirmation_gate,
+        "side_effect_class": side_effect_class,
+        "entrypoint_style": entrypoint_style,
+        "argument_contract": argument_contract,
+        "summary": summary,
+    }
+
 def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dict[str, str]:
     warnings: list[str] = []
     implemented: list[str] = []
@@ -1192,6 +1526,37 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
             entrypoint_style = block2["entrypoint_style"]
             argument_contract = block2["argument_contract"]
             summary = block2["summary"]
+    elif path.startswith(("scripts/admin/backup/", "scripts/admin/docker/", "scripts/admin/firewall/", "scripts/admin/network/", "scripts/admin/storage/")):
+        block3 = classify_block3(
+            path,
+            text,
+            raw_row,
+            warnings,
+            implemented,
+            relation_types,
+            relation_targets,
+            relation_basis,
+            reads_paths,
+            writes_paths,
+            evidence_outputs,
+        )
+        if block3 is None:
+            semantic_entity_type = path_type
+            semantic_runtime = "unknown"
+            semantic_automation_type = "unknown"
+            semantic_confidence = "static_hint_low"
+            warnings.append("no block3 semantic rule matched")
+            summary = first_comment_summary(text)
+        else:
+            semantic_entity_type = block3["semantic_entity_type"]
+            semantic_runtime = block3["semantic_runtime"]
+            semantic_automation_type = block3["semantic_automation_type"]
+            semantic_confidence = block3["semantic_confidence"]
+            confirmation_gate = block3["confirmation_gate"]
+            side_effect_class = block3["side_effect_class"]
+            entrypoint_style = block3["entrypoint_style"]
+            argument_contract = block3["argument_contract"]
+            summary = block3["summary"]
     elif path.startswith("scripts/admin/git/"):
         semantic_entity_type = "git_workflow"
         semantic_runtime = "host"
