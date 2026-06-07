@@ -17,9 +17,9 @@ RAW_DIR="$SHARED_DIR/library-db/raw/system"
 REPORT_DIR="$SHARED_DIR/reports/system"
 INVENTORY_DIR="$SHARED_DIR/inventory/toolbox"
 
-RAW_OUT_TSV="$RAW_DIR/toolbox_script_semantics_inventory_$STAMP.tsv"
-NORMALIZED_OUT_TSV="$INVENTORY_DIR/toolbox_script_semantics_inventory_$STAMP.tsv"
-OUT_REPORT="$REPORT_DIR/toolbox_script_semantics_inventory_report_$STAMP.txt"
+RAW_OUT_TSV=""
+NORMALIZED_OUT_TSV=""
+OUT_REPORT=""
 
 SOURCE_INVENTORY=""
 RAW_SCRIPT_INVENTORY=""
@@ -262,6 +262,7 @@ run_generation() {
   local git_commit
   local git_status
   local scope_batch
+  local scope_slug
   local -a selected_scope
 
   source_report="$(infer_report_for_inventory "$SOURCE_INVENTORY")"
@@ -273,10 +274,12 @@ run_generation() {
   case "$SCOPE_NAME" in
     block1-core-platform)
       scope_batch="block1_core_platform_v0"
+      scope_slug="block1_core_platform"
       mapfile -t selected_scope < <(build_block1_scope)
       ;;
     block2-admin-system-git)
       scope_batch="block2_admin_system_git_v0"
+      scope_slug="block2_admin_system_git"
       mapfile -t selected_scope < <(build_block2_scope)
       ;;
     *)
@@ -287,6 +290,10 @@ run_generation() {
   if [ "${#selected_scope[@]}" -eq 0 ]; then
     fail "Scope collector found no files for: $SCOPE_NAME"
   fi
+
+  RAW_OUT_TSV="$RAW_DIR/toolbox_script_semantics_inventory_${scope_slug}_$STAMP.tsv"
+  NORMALIZED_OUT_TSV="$INVENTORY_DIR/toolbox_script_semantics_inventory_${scope_slug}_$STAMP.tsv"
+  OUT_REPORT="$REPORT_DIR/toolbox_script_semantics_inventory_report_${scope_slug}_$STAMP.txt"
 
   python3 - "$APP_DIR" "$GENERATED_AT" "$RAW_SCRIPT_INVENTORY" "$raw_script_report" "$SOURCE_INVENTORY" "$source_report" "$RAW_OUT_TSV" "$NORMALIZED_OUT_TSV" "$OUT_REPORT" "$GENERATOR_SCRIPT" "$git_branch" "$git_commit" "$git_status" "$scope_batch" "${selected_scope[@]}" <<'PY'
 from __future__ import annotations
