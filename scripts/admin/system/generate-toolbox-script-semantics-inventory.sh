@@ -32,6 +32,7 @@ Usage:
   generate-toolbox-script-semantics-inventory.sh --scope block1-core-platform
   generate-toolbox-script-semantics-inventory.sh --scope block2-admin-system-git
   generate-toolbox-script-semantics-inventory.sh --scope block3-infrastructure-admin
+  generate-toolbox-script-semantics-inventory.sh --scope block4-media-library-soulseek
   generate-toolbox-script-semantics-inventory.sh --source-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --raw-script-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --scope SCOPE --source-inventory PATH --raw-script-inventory PATH
@@ -47,6 +48,7 @@ Supported scopes:
   block1-core-platform       bin/*, scripts/helpers/*, scripts/lib/*, scripts/pipelines/*
   block2-admin-system-git    scripts/admin/system/*, scripts/admin/git/*
   block3-infrastructure-admin scripts/admin/backup/*, docker/*, firewall/*, network/*, storage/*
+  block4-media-library-soulseek scripts/media/library/*, scripts/media/soulseek/*
 
 Default scope:
   block1-core-platform
@@ -70,6 +72,10 @@ Block 3 scope:
   scripts/admin/firewall/*
   scripts/admin/network/*
   scripts/admin/storage/*
+
+Block 4 scope:
+  scripts/media/library/*
+  scripts/media/soulseek/*
 
 Outputs:
   /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_SCOPE_YYYYMMDD-HHMMSS.tsv
@@ -98,6 +104,14 @@ build_block3_scope() {
   (
     cd "$APP_DIR" || exit 1
     find scripts/admin/backup scripts/admin/docker scripts/admin/firewall scripts/admin/network scripts/admin/storage -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
+      | sort
+  )
+}
+
+build_block4_scope() {
+  (
+    cd "$APP_DIR" || exit 1
+    find scripts/media/library scripts/media/soulseek -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
       | sort
   )
 }
@@ -222,7 +236,7 @@ parse_args() {
           fail "Missing value for --scope."
         fi
         case "$1" in
-          block1-core-platform|block2-admin-system-git|block3-infrastructure-admin)
+          block1-core-platform|block2-admin-system-git|block3-infrastructure-admin|block4-media-library-soulseek)
             SCOPE_NAME="$1"
             ;;
           *)
@@ -303,6 +317,11 @@ run_generation() {
       scope_batch="block3_infrastructure_admin_v0"
       scope_slug="block3_infrastructure_admin"
       mapfile -t selected_scope < <(build_block3_scope)
+      ;;
+    block4-media-library-soulseek)
+      scope_batch="block4_media_library_soulseek_v0"
+      scope_slug="block4_media_library_soulseek"
+      mapfile -t selected_scope < <(build_block4_scope)
       ;;
     *)
       fail "Unsupported scope: $SCOPE_NAME"
@@ -530,7 +549,7 @@ def sourced_libraries(text: str) -> list[str]:
 
 def external_commands(text: str) -> list[str]:
     candidates = []
-    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext", "restic", "wipefs", "parted", "partprobe", "mkfs.ext4", "ufw", "iptables", "iptables-restore", "docker", "tailscale", "smartctl", "apt", "snap", "flatpak"]:
+    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "rm", "awk", "grep", "tee", "stat", "du", "sha256sum", "chown", "chmod", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext", "restic", "wipefs", "parted", "partprobe", "mkfs.ext4", "ufw", "iptables", "iptables-restore", "docker", "tailscale", "smartctl", "apt", "snap", "flatpak", "beet", "metaflac", "ffprobe", "fpcalc", "flac", "sqlite3", "curl"]:
         if re.search(rf"(^|[^A-Za-z0-9_/-]){re.escape(cmd)}($|[^A-Za-z0-9_-])", text):
             candidates.append(cmd)
     if "google.cloud.translate_v2" in text:
@@ -1289,6 +1308,322 @@ def classify_block3(path: str, text: str, raw_row: dict[str, str], warnings: lis
         "summary": summary,
     }
 
+def block4_summary(path: str, semantic_entity_type: str, text: str) -> str:
+    name = Path(path).name
+    comment = first_comment_summary(text)
+    explicit = {
+        "scan-music-library.sh": "Scans the canonical music library and music-staging tree and writes a legacy media report.",
+        "build-music-inventory-tsv.sh": "Builds a media library TSV from source-body file discovery and writes media report/raw evidence.",
+        "init-music-library-sqlite.sh": "Recreates a generated SQLite inventory database from raw media library TSV evidence.",
+        "diagnose-musicbrainz-cli-tools.sh": "Checks local MusicBrainz, Beets, audio metadata, and Python tooling availability and writes media staging diagnosis evidence.",
+        "diagnose-music-staging-reviewing.sh": "Inspects albums in the reviewing staging state, compares likely library candidates, and writes media staging diagnosis evidence.",
+        "reorganize-music-staging.sh": "Creates Soulseek music-staging state directories, normalizes ownership/permissions, and moves top-level items into reviewing.",
+        "apply-music-staging-beets-sandbox.sh": "Creates or updates an isolated Beets sandbox configuration and writes report/TSV evidence.",
+        "apply-music-staging-beets-dry-run.sh": "Runs an interactive Beets dry-run with -C -W in an isolated BEETSDIR sandbox and records report/TSV/live-log evidence.",
+        "apply-music-staging-beets-mbid-dry-run.sh": "Runs an interactive Beets MBID dry-run with -C -W in an isolated BEETSDIR sandbox and records evidence.",
+        "apply-music-staging-flac-metadata-write.sh": "Runs approval-gated Beets metadata writing against a selected staging album and records before/after evidence.",
+        "apply-music-staging-transition.sh": "Moves a selected staging album between controlled music-staging states and writes album state evidence.",
+        "apply-beets-mbid-workflow-generalization.sh": "Approval-gated source rewrite workflow for MBID dry-run scripts, with backups and report/TSV evidence.",
+        "apply-beets-mbid-workflow-remove-album-defaults.sh": "Approval-gated source rewrite workflow that removes album-specific defaults from MBID scripts.",
+    }
+    if name in explicit:
+        return explicit[name]
+    if name.startswith("plan-"):
+        return comment if comment != "unknown" else "Generates a media workflow plan without applying media, Beets, metadata, or source changes."
+    if name.startswith("validate-"):
+        return comment if comment != "unknown" else "Validates prior media workflow evidence without applying media, Beets, metadata, or source changes."
+    if name.startswith("diagnose-"):
+        return comment if comment != "unknown" else "Runs a read-oriented media or MusicBrainz diagnostic and writes report/TSV evidence."
+    if semantic_entity_type == "music_staging_audit":
+        return comment if comment != "unknown" else "Audits music-staging evidence and current source-body targets without applying changes."
+    return comment
+
+def classify_block4(path: str, text: str, raw_row: dict[str, str], warnings: list[str], implemented: list[str], relation_types: list[str], relation_targets: list[str], relation_basis: list[str], reads_paths: list[str], writes_paths: list[str], evidence_outputs: list[str]) -> dict[str, str] | None:
+    name = Path(path).name
+    lines = executable_lines(text)
+    exec_text = "\n".join(lines)
+    compact_exec = re.sub(r"\\\n\s*", " ", exec_text)
+
+    if not path.startswith(("scripts/media/library/", "scripts/media/soulseek/")):
+        return None
+
+    semantic_entity_type = "support_tool"
+    semantic_automation_type = "support tool"
+    semantic_runtime = "host"
+    semantic_confidence = "source_contract_high"
+    confirmation_gate = "yes" if has_typed_confirmation(text, lines) or actual_confirmation_gate(text, lines) else "no"
+    side_effect_class = "source_read_only_analysis"
+    entrypoint_style = "cli"
+    argument_contract = "script-specific CLI arguments"
+    high_risk = False
+
+    def add_relation(kind: str, target: str, basis: str) -> None:
+        relation_types.append(kind)
+        relation_targets.append(target)
+        relation_basis.append(basis)
+
+    def add_evidence(kind: str, target: str, basis: str, evidence: str) -> None:
+        writes_paths.append(target)
+        evidence_outputs.append(evidence)
+        add_relation(kind, target, basis)
+
+    if name == "scan-music-library.sh":
+        semantic_entity_type = "media_library_scanner"
+        semantic_automation_type = "audit"
+        implemented.append("music_library_scan_report")
+    elif name == "build-music-inventory-tsv.sh":
+        semantic_entity_type = "media_inventory_generator"
+        semantic_automation_type = "inventory"
+        implemented.append("media_inventory_tsv_generator")
+    elif name == "init-music-library-sqlite.sh":
+        semantic_entity_type = "sqlite_inventory_workflow"
+        semantic_automation_type = "SQLite inventory workflow"
+        implemented.append("sqlite_inventory_rebuild")
+    elif name == "reorganize-music-staging.sh":
+        semantic_entity_type = "soulseek_staging_reorganization_workflow"
+        semantic_automation_type = "Soulseek staging reorganization workflow"
+        implemented.append("music_staging_reorganization_workflow")
+    elif name.startswith("diagnose-musicbrainz-release"):
+        semantic_entity_type = "musicbrainz_release_candidate_diagnostic"
+        semantic_automation_type = "diagnostic"
+        implemented.append("musicbrainz_release_candidate_diagnostic")
+    elif name.startswith("diagnose-musicbrainz"):
+        semantic_entity_type = "musicbrainz_tooling_diagnostic"
+        semantic_automation_type = "diagnostic"
+        implemented.append("musicbrainz_tooling_diagnostic")
+    elif name.startswith("diagnose-music-staging-beets-plugin"):
+        semantic_entity_type = "beets_plugin_readiness_diagnostic"
+        semantic_automation_type = "diagnostic"
+        implemented.append("beets_plugin_readiness_diagnostic")
+    elif name.startswith("diagnose-music-staging-tagging") or name.startswith("diagnose-music-staging-reviewing"):
+        semantic_entity_type = "music_staging_audit"
+        semantic_automation_type = "audit"
+        implemented.append("music_staging_audit")
+    elif name.startswith("diagnose-"):
+        semantic_entity_type = "music_staging_diagnostic"
+        semantic_automation_type = "diagnostic"
+        implemented.append("music_staging_diagnostic")
+    elif name.startswith("plan-beets-mbid"):
+        semantic_entity_type = "source_rewrite_plan"
+        semantic_automation_type = "plan"
+        implemented.append("source_rewrite_plan")
+    elif name.startswith("apply-beets-mbid"):
+        semantic_entity_type = "source_rewrite_apply_workflow"
+        semantic_automation_type = "source rewrite apply workflow"
+        implemented.append("approval_gated_source_rewrite_workflow")
+    elif name.startswith("plan-music-staging-beets-sandbox"):
+        semantic_entity_type = "beets_sandbox_plan"
+        semantic_automation_type = "plan"
+        implemented.append("beets_sandbox_plan")
+    elif name.startswith("apply-music-staging-beets-sandbox"):
+        semantic_entity_type = "beets_sandbox_apply_workflow"
+        semantic_automation_type = "Beets sandbox apply workflow"
+        implemented.append("beets_sandbox_apply_workflow")
+    elif name.startswith("validate-music-staging-beets-sandbox"):
+        semantic_entity_type = "beets_sandbox_validator"
+        semantic_automation_type = "validator"
+        implemented.append("beets_sandbox_validator")
+    elif name.startswith("plan-music-staging-beets-mbid-dry-run"):
+        semantic_entity_type = "beets_mbid_dry_run_plan"
+        semantic_automation_type = "plan"
+        implemented.append("beets_mbid_dry_run_plan")
+    elif name.startswith("apply-music-staging-beets-mbid-dry-run"):
+        semantic_entity_type = "beets_mbid_dry_run_workflow"
+        semantic_automation_type = "Beets MBID dry-run workflow"
+        implemented.append("beets_mbid_dry_run_workflow")
+    elif name.startswith("validate-music-staging-beets-mbid-dry-run"):
+        semantic_entity_type = "beets_mbid_dry_run_validator"
+        semantic_automation_type = "validator"
+        implemented.append("beets_mbid_dry_run_validator")
+    elif name.startswith("plan-music-staging-beets-dry-run"):
+        semantic_entity_type = "beets_dry_run_plan"
+        semantic_automation_type = "plan"
+        implemented.append("beets_dry_run_plan")
+    elif name.startswith("apply-music-staging-beets-dry-run"):
+        semantic_entity_type = "beets_dry_run_workflow"
+        semantic_automation_type = "Beets dry-run workflow"
+        implemented.append("beets_dry_run_workflow")
+    elif name.startswith("validate-music-staging-beets-dry-run"):
+        semantic_entity_type = "beets_dry_run_validator"
+        semantic_automation_type = "validator"
+        implemented.append("beets_dry_run_validator")
+    elif name.startswith("plan-music-staging-flac-metadata-write"):
+        semantic_entity_type = "flac_metadata_write_plan"
+        semantic_automation_type = "plan"
+        implemented.append("flac_metadata_write_plan")
+    elif name.startswith("apply-music-staging-flac-metadata-write"):
+        semantic_entity_type = "flac_metadata_write_workflow"
+        semantic_automation_type = "FLAC metadata write workflow"
+        implemented.append("flac_metadata_write_workflow")
+    elif name.startswith("validate-music-staging-flac-metadata-write"):
+        semantic_entity_type = "flac_metadata_write_validator"
+        semantic_automation_type = "validator"
+        implemented.append("flac_metadata_write_validator")
+    elif name.startswith("plan-music-staging-transition"):
+        semantic_entity_type = "staging_transition_plan"
+        semantic_automation_type = "plan"
+        implemented.append("staging_transition_plan")
+    elif name.startswith("apply-music-staging-transition"):
+        semantic_entity_type = "staging_transition_workflow"
+        semantic_automation_type = "staging transition workflow"
+        implemented.append("staging_transition_workflow")
+    elif name.startswith("validate-music-staging-transition"):
+        semantic_entity_type = "staging_transition_validator"
+        semantic_automation_type = "validator"
+        implemented.append("staging_transition_validator")
+
+    direct_text = exec_text if semantic_entity_type in {"source_rewrite_apply_workflow", "source_rewrite_plan"} else text
+
+    if any(token in direct_text for token in ["source \"$LIB_DIR/", "scripts/lib/", "$LIB_DIR"]):
+        implemented.append("toolbox_lib_usage")
+        add_relation("uses_toolbox_lib", "scripts/lib", "source_body_sourced_toolbox_lib")
+
+    if any(token in direct_text for token in ["/srv/media/music\"", "/srv/media/music/", "MUSIC_ROOT", "LIBRARY_ROOT"]):
+        reads_paths.append("/srv/media/music")
+        add_relation("reads_music_library_candidate", "/srv/media/music", "source_body_music_library_path")
+    if any(token in direct_text for token in ["/srv/media/music-staging", "STAGING_DIR", "STAGING_ROOT", "ALBUM_DIR"]):
+        reads_paths.append("/srv/media/music-staging")
+        add_relation("reads_music_staging_candidate", "/srv/media/music-staging", "source_body_music_staging_path")
+
+    if "$SHARED_DIR/reports/media/staging" in direct_text or "/srv/toolbox/shared/reports/media/staging" in direct_text:
+        add_evidence("writes_media_report", "/srv/toolbox/shared/reports/media/staging", "source_body_media_staging_report_output", "media staging report")
+    elif "/srv/toolbox/shared/reports/media" in direct_text or 'reports/media' in direct_text:
+        add_evidence("writes_media_report", "/srv/toolbox/shared/reports/media", "source_body_media_report_output", "media report")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/reports/media", "source_body_provisional_media_report_destination")
+        warnings.append("legacy/provisional destination under /srv/toolbox/shared/reports/media")
+    elif name == "build-music-inventory-tsv.sh" and 'REPORT_DIR="$OUT_ROOT/reports"' in direct_text:
+        add_evidence("writes_media_report", "/srv/toolbox/shared/library-db/reports", "source_body_library_db_report_output", "media inventory report")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/library-db/reports", "source_body_library_db_reports_destination")
+        warnings.append("legacy/provisional destination under /srv/toolbox/shared/library-db/reports")
+
+    if "$SHARED_DIR/library-db/raw/media/staging" in direct_text or "/srv/toolbox/shared/library-db/raw/media/staging" in direct_text:
+        add_evidence("writes_media_tsv", "/srv/toolbox/shared/library-db/raw/media/staging", "source_body_media_staging_raw_tsv_output", "media staging TSV")
+    elif name == "build-music-inventory-tsv.sh" and 'RAW_DIR="$OUT_ROOT/raw"' in direct_text:
+        add_evidence("writes_media_tsv", "/srv/toolbox/shared/library-db/raw", "source_body_library_db_raw_tsv_output", "media inventory TSV")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/library-db/raw", "source_body_provisional_raw_destination")
+        warnings.append("legacy/provisional destination under /srv/toolbox/shared/library-db/raw")
+    elif name != "init-music-library-sqlite.sh" and ("/srv/toolbox/shared/library-db/raw" in direct_text or 'library-db/raw' in direct_text):
+        add_evidence("writes_media_tsv", "/srv/toolbox/shared/library-db/raw", "source_body_media_raw_tsv_output", "media TSV")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/library-db/raw", "source_body_provisional_raw_destination")
+        warnings.append("legacy/provisional destination under /srv/toolbox/shared/library-db/raw")
+
+    if "$SHARED_DIR/library-db/plans/media/staging" in direct_text or "library-db/plans/media/staging" in direct_text:
+        add_evidence("writes_media_plan", "/srv/toolbox/shared/library-db/plans/media/staging", "source_body_media_plan_output", "media plan TSV")
+    if "$SHARED_DIR/library-db/snapshots/media/staging" in direct_text or "library-db/snapshots/media/staging" in direct_text or "SNAPSHOT_DIR" in direct_text:
+        add_evidence("writes_media_snapshot", "/srv/toolbox/shared/library-db/snapshots/media/staging", "source_body_media_snapshot_output", "media snapshot")
+    if "/srv/toolbox/shared/library-db/reports" in direct_text or "library-db/reports" in direct_text:
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/library-db/reports", "source_body_library_db_reports_destination")
+        warnings.append("legacy/provisional destination under /srv/toolbox/shared/library-db/reports")
+    if "ALBUM_STATE_ROOT" in direct_text or "library-db/albums/media-staging" in direct_text:
+        add_evidence("writes_album_state", "/srv/toolbox/shared/library-db/albums/media-staging", "source_body_album_state_output", "album state TSV")
+    if "ALBUM_TOOLBOX_DIR" in direct_text or "/.toolbox" in direct_text:
+        add_evidence("writes_toolbox_album_evidence", "album .toolbox evidence directory", "source_body_album_toolbox_evidence", "album-local Toolbox evidence")
+
+    if name == "init-music-library-sqlite.sh":
+        reads_paths.append("/srv/toolbox/shared/library-db/raw")
+        writes_paths.append("/srv/toolbox/shared/library-db/sqlite/music-library.sqlite")
+        evidence_outputs.append("generated SQLite inventory database")
+        add_relation("reads_music_inventory_tsv", "/srv/toolbox/shared/library-db/raw/*.tsv", "source_body_sqlite_import_raw_tsv")
+        add_relation("writes_sqlite_inventory_candidate", "/srv/toolbox/shared/library-db/sqlite/music-library.sqlite", "source_body_sqlite_db_output")
+
+    if "beet" in exec_text or "BEETSDIR" in direct_text:
+        add_relation("uses_beets_candidate", "beet", "source_body_beets_reference")
+    if "BEETS_SANDBOX_ROOT" in direct_text or "BEETSDIR" in direct_text or "/beets/media-staging" in direct_text:
+        add_relation("updates_beets_sandbox_candidate", "/srv/toolbox/shared/beets/media-staging", "source_body_beets_sandbox_reference")
+    if re.search(r"musicbrainz|MusicBrainz|MBID|musicbrainzngs", direct_text):
+        add_relation("uses_musicbrainz_candidate", "MusicBrainz", "source_body_musicbrainz_reference")
+    if re.search(r"https?://musicbrainz\.org|urllib\.request|curl\s+.*musicbrainz", exec_text):
+        add_relation("uses_network_candidate", "MusicBrainz API", "source_body_musicbrainz_network_reference")
+        warnings.append("MusicBrainz network query candidate")
+    if "fpcalc" in exec_text or "acoustid" in direct_text.lower() or "chroma" in direct_text.lower():
+        add_relation("uses_acoustid_candidate", "AcoustID/Chromaprint", "source_body_acoustic_fingerprint_reference")
+    if "fpcalc" in exec_text:
+        add_relation("uses_fpcalc", "fpcalc", "source_body_fpcalc_command")
+    if "metaflac" in exec_text:
+        add_relation("uses_metaflac", "metaflac", "source_body_metaflac_command")
+    if "ffprobe" in exec_text:
+        add_relation("uses_ffprobe", "ffprobe", "source_body_ffprobe_command")
+    if re.search(r"(^|\n)\s*(command\s+-v\s+)?flac\b", exec_text) or "flac -t" in exec_text:
+        add_relation("uses_flac", "flac", "source_body_flac_command")
+    if "sqlite3" in exec_text:
+        add_relation("uses_sqlite3", "sqlite3", "source_body_sqlite3_command")
+        add_relation("writes_sqlite_inventory_candidate", "/srv/toolbox/shared/library-db/sqlite/music-library.sqlite" if name == "init-music-library-sqlite.sh" else "generated media SQLite inventory", "source_body_sqlite3_inventory_write")
+    if any(re.search(r"(^|[;&|(){}\s])rm\s+-f\s+\"\$DB\"", line) for line in lines):
+        add_relation("recreates_sqlite_inventory_candidate", "generated media SQLite inventory", "source_body_rm_generated_sqlite_db")
+        warnings.append("SQLite DB recreation candidate")
+
+    beets_write = any(
+        re.search(r"\bbeet\b.*\bimport\b", line)
+        and "-C" in line
+        and "-w" in line
+        and "-W" not in line
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    )
+    beets_dry_run = any(
+        re.search(r"\bbeet\b.*\bimport\b", line)
+        and "-C" in line
+        and "-W" in line
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    )
+    if beets_write:
+        add_relation("writes_flac_metadata_candidate", "selected staging album FLAC metadata", "source_body_beets_write_import")
+        warnings.append("FLAC metadata write candidate")
+        high_risk = True
+    if beets_dry_run and semantic_entity_type in {"beets_dry_run_workflow", "beets_mbid_dry_run_workflow"}:
+        warnings.append("Beets dry-run sandbox DB mutation candidate")
+
+    if any(re.search(r"(^|[;&|(){}\s])mv\s+.*(ALBUM_DIR|DEST_DIR|STAGING_ROOT|/srv/media/music-staging)", line) for line in lines):
+        add_relation("moves_staging_album_candidate", "/srv/media/music-staging", "source_body_staging_mv_command")
+        warnings.append("staging album move candidate")
+        warnings.append("media filesystem mutation candidate")
+        high_risk = True
+    if any(re.search(r"(^|[;&|(){}\s])(chown|chmod)\b", line) and "/srv/media/music-staging" in text for line in lines):
+        add_relation("changes_staging_permissions_candidate", "/srv/media/music-staging", "source_body_chown_chmod_staging")
+        warnings.append("staging ownership/permission change candidate")
+        warnings.append("media filesystem mutation candidate")
+        high_risk = True
+    if semantic_entity_type == "soulseek_staging_reorganization_workflow":
+        add_relation("reorganizes_music_staging_candidate", "/srv/media/music-staging", "source_body_soulseek_staging_reorganization")
+        warnings.append("Soulseek staging reorganization candidate")
+        high_risk = True
+    if semantic_entity_type == "beets_sandbox_apply_workflow":
+        warnings.append("Beets sandbox state mutation candidate")
+        high_risk = True
+    if semantic_entity_type == "source_rewrite_apply_workflow" or any(token in compact_exec for token in ["write_text(", "cat > \"$PLAN_SCRIPT\"", "cat > \"$APPLY_SCRIPT\"", "cat > \"$VALIDATE_SCRIPT\""]):
+        add_relation("rewrites_toolbox_source_candidate", "scripts/media/library", "source_body_script_rewrite")
+        warnings.append("Toolbox source rewrite candidate")
+        high_risk = True
+
+    expects_evidence = semantic_entity_type not in {"support_tool", "unknown"}
+    has_report = any(rt in relation_types for rt in ["writes_media_report"])
+    has_tsv = any(rt in relation_types for rt in ["writes_media_tsv", "writes_media_plan", "writes_sqlite_inventory_candidate"])
+    if expects_evidence and not (has_report or has_tsv):
+        warnings.append("missing canonical report/TSV where expected")
+
+    if high_risk:
+        side_effect_class = "approval_required_media_or_source_change_candidate"
+        if confirmation_gate == "yes":
+            add_relation("requires_confirmation", "operator confirmation", "source_body_confirmation_gate")
+        else:
+            add_relation("missing_or_weak_confirmation_candidate", "operator confirmation", "source_body_high_risk_media_without_typed_confirmation")
+            warnings.append("weak or missing typed confirmation for high-risk media workflow")
+
+    summary = block4_summary(path, semantic_entity_type, text)
+
+    return {
+        "semantic_entity_type": semantic_entity_type,
+        "semantic_runtime": semantic_runtime,
+        "semantic_automation_type": semantic_automation_type,
+        "semantic_confidence": semantic_confidence,
+        "confirmation_gate": confirmation_gate,
+        "side_effect_class": side_effect_class,
+        "entrypoint_style": entrypoint_style,
+        "argument_contract": argument_contract,
+        "summary": summary,
+    }
+
 def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dict[str, str]:
     warnings: list[str] = []
     implemented: list[str] = []
@@ -1557,6 +1892,37 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
             entrypoint_style = block3["entrypoint_style"]
             argument_contract = block3["argument_contract"]
             summary = block3["summary"]
+    elif path.startswith(("scripts/media/library/", "scripts/media/soulseek/")):
+        block4 = classify_block4(
+            path,
+            text,
+            raw_row,
+            warnings,
+            implemented,
+            relation_types,
+            relation_targets,
+            relation_basis,
+            reads_paths,
+            writes_paths,
+            evidence_outputs,
+        )
+        if block4 is None:
+            semantic_entity_type = path_type
+            semantic_runtime = "unknown"
+            semantic_automation_type = "unknown"
+            semantic_confidence = "static_hint_low"
+            warnings.append("no block4 semantic rule matched")
+            summary = first_comment_summary(text)
+        else:
+            semantic_entity_type = block4["semantic_entity_type"]
+            semantic_runtime = block4["semantic_runtime"]
+            semantic_automation_type = block4["semantic_automation_type"]
+            semantic_confidence = block4["semantic_confidence"]
+            confirmation_gate = block4["confirmation_gate"]
+            side_effect_class = block4["side_effect_class"]
+            entrypoint_style = block4["entrypoint_style"]
+            argument_contract = block4["argument_contract"]
+            summary = block4["summary"]
     elif path.startswith("scripts/admin/git/"):
         semantic_entity_type = "git_workflow"
         semantic_runtime = "host"
