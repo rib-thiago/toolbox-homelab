@@ -6,6 +6,16 @@ It does not replace policies, service maps, architecture documents, graph artifa
 
 This first run is intentionally limited. Its goal is to test whether Codex can read the existing knowledge layer, inspect selected repository artifacts, identify gaps, ask useful questions, and avoid unsafe action.
 
+For the general day-to-day Codex operating model, including roles, modes, usage budget, stopping rules, live-logs, briefs, patch authority, commits, and task lifecycle, use:
+
+* `knowledge/runbooks/codex-operating-model.md`
+
+For parallel work, dirty worktrees, stashes, branches, and unfinished long-running workfronts, use:
+
+* `knowledge/runbooks/codex-parallel-work.md`
+
+This runbook remains focused on the first controlled read-only and evidence-writing Codex exercise.
+
 ## Purpose
 
 The purpose of this runbook is to define a safe first Codex/local-agent exercise and its immediate follow-up mode.

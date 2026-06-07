@@ -19,7 +19,10 @@ Before starting any task, the agent must read:
 3. `knowledge/context/toolbox-context.md`, when it exists
 4. Relevant files under `knowledge/policies/`
 5. Relevant files under `knowledge/services/`
-6. Relevant files under `knowledge/runbooks/`
+6. Relevant files under `knowledge/runbooks/`.
+   For Codex-assisted work, read `knowledge/runbooks/codex-operating-model.md`.
+   For first-run or strict read-only Codex work, read `knowledge/runbooks/codex-read-only-first-run.md`.
+   For parallel work, dirty worktrees, stashes, or branches, read `knowledge/runbooks/codex-parallel-work.md`.
 7. Relevant graph files under `knowledge/graph/`, when impact or dependencies matter
 8. Relevant architecture records under `knowledge/architecture/`, when decisions or tradeoffs matter
 

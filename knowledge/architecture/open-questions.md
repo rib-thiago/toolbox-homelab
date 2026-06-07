@@ -76,6 +76,8 @@ Why open: The goal is to reduce copy/paste and uploads without losing review dis
 
 Needed diagnosis: A small read-only pilot.
 
+Current partial answer: `knowledge/runbooks/codex-operating-model.md` now records the first operational model for Codex-assisted work, including roles, modes, usage-budget rules, live-logs, briefs, patch authority, commits, stopping rules, and task lifecycle. The protocol still needs validation through repeated real tasks before this question can be considered resolved.
+
 Candidate ADR: Yes.
 
 Related domains: Codex, ChatGPT, reports, briefs, handoff.
@@ -117,6 +119,8 @@ Question: Should the Toolbox generate handoff briefs or live-log artifacts for C
 Why open: Long chats, mobile terminal scrollback limits, interrupted Codex sessions, and manual context transfer are recurring friction. The Block 3 semantic-inventory closure showed that multi-phase Codex work benefits from a durable live-log under `/srv/toolbox/shared/reports/system/` in addition to any concise ChatGPT brief.
 
 Needed diagnosis: Identify useful inputs, output format, retention expectations, and when a concise brief is enough versus when a live-log/handoff file is required.
+
+Current partial answer: `knowledge/runbooks/codex-operating-model.md` and `knowledge/runbooks/codex-parallel-work.md` now define live-log, handoff, brief, stash, branch, and dirty-worktree expectations for long-running or interrupted workfronts. The remaining question is whether a generated ChatGPT brief command, template, or workflow should be implemented.
 
 Candidate ADR: Maybe.
 
