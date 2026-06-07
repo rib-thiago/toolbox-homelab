@@ -272,6 +272,26 @@ Briefs should usually belong under:
 
 unless a more specific destination is documented.
 
+## Codex live-logs and handoff logs
+
+Codex sessions and agent-assisted workflows should create a durable live-log or handoff Markdown under `/srv/toolbox/shared/reports/system/` when the work has multiple phases, operator checkpoints, commit or push decisions, generated evidence writes, long outputs that may exceed terminal scrollback, expected resume via `codex resume`, or high-risk domains such as backup, firewall, Docker, network, storage, media mutation, Git mutation, or agent authority.
+
+A live-log should record:
+
+* active mode;
+* scope;
+* files inspected;
+* commands run;
+* generated artifacts;
+* validation results;
+* operator checkpoints;
+* approvals given;
+* commit/push artifacts, when any;
+* final Git status;
+* warnings, uncertainty, and next step.
+
+A live-log is generated evidence only. It does not authorize source changes, service changes, media changes, configuration changes, permission changes, secret access, backup changes, graph changes, commits, or pushes by itself.
+
 ## Source tree rule
 
 Generated artifacts do not belong in `/srv/toolbox/app/` unless explicitly intended as:

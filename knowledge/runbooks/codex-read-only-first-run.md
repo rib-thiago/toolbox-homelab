@@ -409,6 +409,7 @@ Evidence-writing diagnostic mode is complete when Codex has produced:
 * validator results;
 * diagnostic results;
 * generated reports and TSVs only under `/srv/toolbox/shared`;
+* a live-log or handoff Markdown under `/srv/toolbox/shared/reports/system/` when the work has multiple phases, operator checkpoints, generated evidence writes, long outputs, resume risk, commit/push decisions, or high-risk domains;
 * structured findings;
 * structured questions for the operator;
 * a classification summary;

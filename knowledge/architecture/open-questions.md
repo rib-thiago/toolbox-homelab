@@ -112,11 +112,11 @@ Related domains: reporting, inventory, graph, handoff.
 
 Status: `open`
 
-Question: Should the Toolbox generate handoff briefs for ChatGPT/Codex containing Git status, latest reports, graph summary, open questions, and current workfront?
+Question: Should the Toolbox generate handoff briefs or live-log artifacts for ChatGPT/Codex containing Git status, latest reports, graph summary, open questions, operator checkpoints, generated evidence, and current workfront?
 
-Why open: Long chats and manual context transfer are recurring friction.
+Why open: Long chats, mobile terminal scrollback limits, interrupted Codex sessions, and manual context transfer are recurring friction. The Block 3 semantic-inventory closure showed that multi-phase Codex work benefits from a durable live-log under `/srv/toolbox/shared/reports/system/` in addition to any concise ChatGPT brief.
 
-Needed diagnosis: Identify useful inputs and output format.
+Needed diagnosis: Identify useful inputs, output format, retention expectations, and when a concise brief is enough versus when a live-log/handoff file is required.
 
 Candidate ADR: Maybe.
 
@@ -731,6 +731,20 @@ Needed diagnosis: Future service map or graph.
 Candidate ADR: No.
 
 Related domains: slskd, music staging.
+
+#### O048 — Block 3 infrastructure modernization queue
+
+Status: `needs operator decision`
+
+Question: How should Block 3 infrastructure-admin findings from semantic inventory be turned into a modernization backlog without treating warnings as immediate patches or graph edges?
+
+Why open: The Block 3 semantic inventory identified high-risk and modernization-relevant source-body findings: backup repository backup/prune workflows, block-device formatting, firewall/UFW apply, DOCKER-USER apply/rollback, package cleanup, Snap/Flatpak removal, cache/destructive cleanup, weak or missing typed confirmation on high-risk apply workflows, sensitive path reads, legacy destinations (`$HOME/relatorios-backup`, `$HOME/relatorios-disco`, `/home/thiago/iptables-backups`), and missing canonical report/TSV outputs in some older scripts. `scripts/admin/storage/diagnose-storage-pressure-and-ata-health.sh` is the current canonical shared-report/TSV example. `scripts/admin/storage/investigate-storage-homelab.sh` still has a nonblocking `unknown` summary.
+
+Needed diagnosis: Review the final Block 3 handoff and semantic report, decide which findings are modernization backlog items, which scripts should remain manual-only, whether high-risk apply workflows need a typed-confirmation standard, and whether Block 3 warning categories should influence semantic inventory expansion before graph work.
+
+Candidate ADR: Maybe.
+
+Related domains: Toolbox scripts, infrastructure, backup, Docker, firewall, network, storage, inventory, graph.
 
 ## Resolved questions
 

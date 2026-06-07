@@ -230,6 +230,22 @@ Related artifacts:
 * `/srv/toolbox/shared/reports/system/toolbox_inventory_report_20260604-065905.txt`
 * `/srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_20260605-231231.txt`
 
+#### H011d — Long Codex sessions need durable handoff logs
+
+Problem: The Toolbox semantic-inventory workfront required multiple Codex phases, operator checkpoints, commit/push decisions, generated artifacts, and later session recovery. Terminal scrollback, chat history, and `codex resume` were useful but not sufficient as operational evidence.
+
+Resolution: The Block 3 semantic inventory closure used a generated live-log under `/srv/toolbox/shared/reports/system/` to record commands, validation results, operator approvals, Git helper artifacts, final clean artifact paths, warnings, and next steps.
+
+Lesson: Long or multi-phase Codex work needs a durable handoff/live-log artifact. The log lets the operator and future agents recover state without relying on terminal scrollback, copied chat fragments, or model memory.
+
+Operational consequence: When Codex work has multiple phases, operator checkpoints, generated evidence writes, commit/push decisions, long outputs, resume risk, or high-risk domains, agents should create and maintain a live-log under `/srv/toolbox/shared/reports/system/`. The log is generated evidence only; it does not authorize source changes, service changes, media changes, config changes, backup changes, graph changes, commits, or pushes.
+
+Related artifacts:
+
+* `/srv/toolbox/shared/reports/system/codex_block3_semantics_scope_closure_log_20260607-163351.md`
+* `/srv/toolbox/shared/reports/system/toolbox_codebase_block3_infrastructure_admin_handoff_20260607-150817.md`
+* `/srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_block3_infrastructure_admin_20260607-164108.txt`
+
 ### Python, Beets, and MusicBrainz
 
 #### H012 — Minimal Python tooling avoided unnecessary scope expansion
