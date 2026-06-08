@@ -43,6 +43,12 @@ The raw semantic diagnostic TSV should be written under:
 /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
 ```
 
+Implemented named scopes now use scope-aware filenames so back-to-back runs cannot overwrite each other:
+
+```text
+/srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_<scope_slug>_YYYYMMDD-HHMMSS.tsv
+```
+
 This TSV should preserve per-script source-body observations and diagnostic fields.
 
 ## 6. Normalized output artifact model
@@ -51,6 +57,12 @@ The normalized semantic inventory should be written under:
 
 ```text
 /srv/toolbox/shared/inventory/toolbox/toolbox_script_semantics_inventory_YYYYMMDD-HHMMSS.tsv
+```
+
+Implemented named scopes now use scope-aware filenames:
+
+```text
+/srv/toolbox/shared/inventory/toolbox/toolbox_script_semantics_inventory_<scope_slug>_YYYYMMDD-HHMMSS.tsv
 ```
 
 This artifact should use schema name:
@@ -67,6 +79,12 @@ The human report should be written under:
 
 ```text
 /srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_YYYYMMDD-HHMMSS.txt
+```
+
+Implemented named scopes now use scope-aware filenames:
+
+```text
+/srv/toolbox/shared/reports/system/toolbox_script_semantics_inventory_report_<scope_slug>_YYYYMMDD-HHMMSS.txt
 ```
 
 The report should summarize scope, counts, confidence levels, placeholder rows, warnings, and graph-readiness blockers.
@@ -92,6 +110,37 @@ The initial v0 scope is only the first batch.
 The long-term goal is full semantic coverage of all Toolbox scripts, commands, helpers, libraries, pipelines, workflows, and legacy scripts.
 
 The schema must support incremental expansion without changing the meaning of existing fields.
+
+Current implemented scope batches:
+
+```text
+block1-core-platform
+  scope_slug=block1_core_platform
+  scope_batch=block1_core_platform_v0
+  paths: bin/*, scripts/helpers/*, scripts/lib/*, scripts/pipelines/*
+
+block2-admin-system-git
+  scope_slug=block2_admin_system_git
+  scope_batch=block2_admin_system_git_v0
+  paths: scripts/admin/system/*, scripts/admin/git/*
+
+block3-infrastructure-admin
+  scope_slug=block3_infrastructure_admin
+  scope_batch=block3_infrastructure_admin_v0
+  paths: scripts/admin/backup/*, scripts/admin/docker/*, scripts/admin/firewall/*, scripts/admin/network/*, scripts/admin/storage/*
+
+block4-media-library-soulseek
+  scope_slug=block4_media_library_soulseek
+  scope_batch=block4_media_library_soulseek_v0
+  paths: scripts/media/library/*, scripts/media/soulseek/*
+
+block5-stockhausen-media-archive
+  scope_slug=block5_stockhausen_media_archive
+  scope_batch=block5_stockhausen_media_archive_v0
+  paths: scripts/media/stockhausen/*
+```
+
+Blocks 1 through 5 are implemented as bounded source-body semantic inventory scopes. They provide reviewed source-body interpretation, warnings, and relation candidates for their scoped files. They do not provide runtime validation and do not authorize script execution.
 
 ## 10. Proposed raw TSV schema
 
@@ -320,6 +369,8 @@ Path-intended role should remain separate from semantic role.
 
 Semantic inventory may propose relation candidates. It must not emit accepted graph edges.
 
+This remains true for the implemented Block 1 through Block 5 scopes. Relation candidates in generated TSVs and reports are candidate evidence only. They are not graph edges, dependency truth, or authorization to change services, files, media, backups, firewall state, Git state, or generated graph files.
+
 Higher-confidence candidates:
 
 * run-job dispatches pipeline scripts by job type;
@@ -357,6 +408,8 @@ This layer must not infer:
 
 Runtime validation is a future separate evidence layer. This semantic inventory should normally emit `runtime_validated=no` unless external execution evidence is explicitly referenced.
 
+The implemented Block 1 through Block 5 semantic inventory scopes normally emit `runtime_validated=no`. Source-body analysis can identify likely behavior, risk, warnings, and relation candidates, but it does not prove successful execution, live safety, current host state, current media state, backup integrity, firewall state, or service behavior.
+
 ## 20. Validation rules
 
 Future validation should check:
@@ -372,6 +425,14 @@ Future validation should check:
 * source inventory/report/TSV paths are recorded;
 * Git commit and Git status are recorded;
 * no accepted graph edges are emitted.
+
+Graph generation remains blocked until separate decisions define:
+
+* relation-candidate promotion rules;
+* runtime-validation evidence artifacts;
+* freshness requirements for source inventories, semantic inventories, and service maps;
+* review workflow for proposed graph entities and relations;
+* storage split between stable graph knowledge and dynamic generated evidence.
 
 ## 21. Expansion strategy from v0 core scope to all scripts
 

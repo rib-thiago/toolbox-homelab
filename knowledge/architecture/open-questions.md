@@ -148,9 +148,9 @@ Status: `needs diagnosis`
 
 Question: What command or workflow will produce `knowledge/graph/entities.yaml` and `knowledge/graph/relations.yaml`?
 
-Why open: The graph model is conceptually defined but not implemented. Inventory must precede graph generation, and graph relations must be derived from dated evidence, inventory rows, relation hints, service maps, policies, and explicit graph-generation rules rather than memory or manually invented assumptions. The first semantic script pass showed that raw script inventory and `toolbox_inventory_v0` are useful but still too shallow for graph generation: path-level classification is not semantic classification, static script text is not runtime-validated behavior, and relation hints are not graph edges.
+Why open: The graph model is conceptually defined but not implemented. Inventory must precede graph generation, and graph relations must be derived from dated evidence, inventory rows, relation hints, service maps, policies, and explicit graph-generation rules rather than memory or manually invented assumptions. The first semantic script pass showed that raw script inventory and `toolbox_inventory_v0` are useful but still too shallow for graph generation: path-level classification is not semantic classification, static script text is not runtime-validated behavior, and relation hints are not graph edges. Semantic inventory coverage now extends through Blocks 1-5, but those outputs remain source-body interpretation and candidate evidence only.
 
-Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the intermediate semantic inventory layer needed before non-authoritative relation hints or evidence fields can become proposed graph entities and relations. The graph remains blocked until semantic inventory coverage expands beyond the core/high-risk scope, runtime validation evidence is modeled separately, and relation-candidate promotion rules are defined.
+Needed diagnosis: Define graph inputs, schema, generation process, validation, update policy, and the intermediate semantic inventory layer needed before non-authoritative relation hints or evidence fields can become proposed graph entities and relations. The graph remains blocked until runtime validation evidence is modeled separately, relation-candidate promotion rules are defined, freshness expectations are documented, and a reviewed graph workflow exists.
 
 Candidate ADR: Yes.
 
@@ -164,7 +164,7 @@ Question: What schema should represent services, scripts, paths, reports, TSVs, 
 
 Why open: Without schema, the graph may become arbitrary text. The first script semantics pass showed that `runtime` and `automation_type` cannot be trusted from path or static feature flags alone. For example, `bin/run-job` is semantically a run-job executor, non-empty `scripts/pipelines/*.sh` are semantic pipelines only when they implement the `JOB_ROOT` input/work/output contract, `scripts/lib/*.sh` are sourced modules, `scripts/helpers/*.sh` are executable helpers, Git apply scripts are controlled Git workflows, and `generate-toolbox-inventory.sh` is semantically a generator even when path/phase metadata is shallow.
 
-Needed diagnosis: Sample entities from the lote 1 service maps, raw script inventory, `toolbox_inventory_v0`, and a controlled semantic script inventory pass that distinguishes path-level classification from source-body semantics and runtime-validated behavior. Decide how semantic inventory expansion to all scripts should represent placeholders, legacy scripts, and modernization candidates without turning cleanup findings into graph facts.
+Needed diagnosis: Sample entities from the lote 1 service maps, raw script inventory, `toolbox_inventory_v0`, and the implemented Block 1-5 semantic script inventories that distinguish path-level classification from source-body semantics and runtime-validated behavior. Decide how semantic inventory expansion should represent placeholders, legacy scripts, high-risk workflows, media workflows, and modernization candidates without turning cleanup findings or warning rows into graph facts.
 
 Candidate ADR: Yes.
 
@@ -192,7 +192,7 @@ Question: Should each graph relation include source, confidence, observed time, 
 
 Why open: Relations without evidence can become undocumented assumptions. The first `toolbox_inventory_v0` output records reports and TSVs as evidence fields and explicitly treats relation hints as non-authoritative hints, not graph edges. The semantic script pass reinforced that source-body evidence is stronger than path or text-mention flags, but still weaker than runtime-validated behavior.
 
-Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, source-body semantics, runtime validation, and explicit generation rules should support confidence and provenance. Define the future runtime-validation evidence layer and the review threshold for promoting relation candidates into accepted graph edges.
+Needed diagnosis: Design minimum relation metadata and decide how dated evidence paths, inventory rows, service maps, policies, relation hints, source-body semantics, runtime validation, and explicit generation rules should support confidence and provenance. Define the future runtime-validation evidence layer, freshness requirements, and the review threshold for promoting relation candidates from Blocks 1-5 semantic inventories into accepted graph edges.
 
 Candidate ADR: Yes.
 
@@ -749,6 +749,48 @@ Needed diagnosis: Review the final Block 3 handoff and semantic report, decide w
 Candidate ADR: Maybe.
 
 Related domains: Toolbox scripts, infrastructure, backup, Docker, firewall, network, storage, inventory, graph.
+
+#### O049 — Block 4 media/library/Soulseek modernization queue
+
+Status: `needs operator decision`
+
+Question: How should Block 4 media/library and Soulseek findings from semantic inventory become a modernization backlog without treating warnings as immediate patches, runtime validation, or graph edges?
+
+Why open: The Block 4 semantic inventory and handoff identified media-library inventory scripts, Beets sandbox and dry-run workflows, controlled FLAC metadata-write workflows, staging transition workflows, source-rewrite apply workflows, and Soulseek staging reorganization. Modernization questions remain around canonical destination migration, confirmation gates for staging reorganization and source-rewrite workflows, Beets dry-run versus sandbox mutation boundaries, and whether slskd/Soulseek needs its own service map before graph work.
+
+Needed diagnosis: Review the final Block 4 semantic report and handoff, decide which findings are backlog items, which scripts need confirmation-gate or destination cleanup, how Beets sandbox/dry-run runtime validation should be modeled, and whether `O047` should be updated or a new Soulseek service map should be created.
+
+Candidate ADR: Maybe.
+
+Related domains: music staging, Soulseek, slskd, Beets, media library, inventory, graph.
+
+#### O050 — Block 5 Stockhausen modernization queue
+
+Status: `needs operator decision`
+
+Question: How should Block 5 Stockhausen semantic-inventory findings become a modernization backlog without weakening the collection policy or treating historical one-off workflows as automatically reusable graph facts?
+
+Why open: The Block 5 semantic inventory and handoff identified gold-model workflows, batch and local normalization, performer repair, import 050 workflows, artwork cold-archive build/validate/purge boundaries, final-freeze snapshots, Navidrome album-count diagnosis, historical one-off scripts, broad media/raw destinations, and a home-directory report destination. Modernization questions remain around migration to `/srv/toolbox/shared/reports/media/stockhausen` and `/srv/toolbox/shared/library-db/raw/media/stockhausen`, archive-build versus purge gates, finalize/import workflow review, historical one-off classification, and whether Stockhausen needs a dedicated service/workflow map.
+
+Needed diagnosis: Review the final Block 5 semantic report and handoff, decide which workflows remain supported, which are historical evidence only, which need destination migration, and whether Stockhausen-specific service-map or runbook updates should precede graph work.
+
+Candidate ADR: Maybe.
+
+Related domains: Stockhausen, media curation, Navidrome, cold archive, inventory, graph.
+
+#### O051 — Runtime-validation evidence layer
+
+Status: `needs diagnosis`
+
+Question: What artifact, schema, and workflow should record runtime validation evidence separately from source-body semantic inventory before graph generation?
+
+Why open: Blocks 1-5 semantic inventories provide source-body interpretation, warnings, confidence, and relation candidates, but they intentionally emit `runtime_validated=no` unless explicit external evidence is referenced. Graph generation needs a way to distinguish source-body claims from execution evidence without encouraging unsafe script execution or treating generated semantic rows as proof of live behavior.
+
+Needed diagnosis: Design the runtime-validation evidence layer, including allowed validation sources, artifact paths, schema fields, freshness rules, safety gates, relation to reports/TSVs, and criteria for using runtime evidence in graph promotion.
+
+Candidate ADR: Yes.
+
+Related domains: runtime validation, semantic inventory, graph, reporting, agent safety.
 
 ## Resolved questions
 
