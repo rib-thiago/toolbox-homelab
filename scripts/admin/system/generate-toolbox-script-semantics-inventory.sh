@@ -33,6 +33,7 @@ Usage:
   generate-toolbox-script-semantics-inventory.sh --scope block2-admin-system-git
   generate-toolbox-script-semantics-inventory.sh --scope block3-infrastructure-admin
   generate-toolbox-script-semantics-inventory.sh --scope block4-media-library-soulseek
+  generate-toolbox-script-semantics-inventory.sh --scope block5-stockhausen-media-archive
   generate-toolbox-script-semantics-inventory.sh --source-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --raw-script-inventory PATH
   generate-toolbox-script-semantics-inventory.sh --scope SCOPE --source-inventory PATH --raw-script-inventory PATH
@@ -49,6 +50,7 @@ Supported scopes:
   block2-admin-system-git    scripts/admin/system/*, scripts/admin/git/*
   block3-infrastructure-admin scripts/admin/backup/*, docker/*, firewall/*, network/*, storage/*
   block4-media-library-soulseek scripts/media/library/*, scripts/media/soulseek/*
+  block5-stockhausen-media-archive scripts/media/stockhausen/*
 
 Default scope:
   block1-core-platform
@@ -76,6 +78,9 @@ Block 3 scope:
 Block 4 scope:
   scripts/media/library/*
   scripts/media/soulseek/*
+
+Block 5 scope:
+  scripts/media/stockhausen/*
 
 Outputs:
   /srv/toolbox/shared/library-db/raw/system/toolbox_script_semantics_inventory_SCOPE_YYYYMMDD-HHMMSS.tsv
@@ -112,6 +117,14 @@ build_block4_scope() {
   (
     cd "$APP_DIR" || exit 1
     find scripts/media/library scripts/media/soulseek -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
+      | sort
+  )
+}
+
+build_block5_scope() {
+  (
+    cd "$APP_DIR" || exit 1
+    find scripts/media/stockhausen -maxdepth 1 -type f -printf '%p\n' 2>/dev/null \
       | sort
   )
 }
@@ -236,7 +249,7 @@ parse_args() {
           fail "Missing value for --scope."
         fi
         case "$1" in
-          block1-core-platform|block2-admin-system-git|block3-infrastructure-admin|block4-media-library-soulseek)
+          block1-core-platform|block2-admin-system-git|block3-infrastructure-admin|block4-media-library-soulseek|block5-stockhausen-media-archive)
             SCOPE_NAME="$1"
             ;;
           *)
@@ -322,6 +335,11 @@ run_generation() {
       scope_batch="block4_media_library_soulseek_v0"
       scope_slug="block4_media_library_soulseek"
       mapfile -t selected_scope < <(build_block4_scope)
+      ;;
+    block5-stockhausen-media-archive)
+      scope_batch="block5_stockhausen_media_archive_v0"
+      scope_slug="block5_stockhausen_media_archive"
+      mapfile -t selected_scope < <(build_block5_scope)
       ;;
     *)
       fail "Unsupported scope: $SCOPE_NAME"
@@ -549,7 +567,7 @@ def sourced_libraries(text: str) -> list[str]:
 
 def external_commands(text: str) -> list[str]:
     candidates = []
-    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "rm", "awk", "grep", "tee", "stat", "du", "sha256sum", "chown", "chmod", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext", "restic", "wipefs", "parted", "partprobe", "mkfs.ext4", "ufw", "iptables", "iptables-restore", "docker", "tailscale", "smartctl", "apt", "snap", "flatpak", "beet", "metaflac", "ffprobe", "fpcalc", "flac", "sqlite3", "curl"]:
+    for cmd in ["python3", "git", "find", "sort", "tail", "cut", "cp", "mkdir", "cat", "date", "hostname", "id", "wc", "sed", "head", "basename", "ls", "env", "mktemp", "mv", "rm", "awk", "grep", "tee", "stat", "du", "sha256sum", "chown", "chmod", "exiftool", "magick", "tesseract", "pdftoppm", "pdftotext", "restic", "wipefs", "parted", "partprobe", "mkfs.ext4", "ufw", "iptables", "iptables-restore", "docker", "tailscale", "smartctl", "apt", "snap", "flatpak", "beet", "metaflac", "ffprobe", "fpcalc", "flac", "sqlite3", "curl", "7z"]:
         if re.search(rf"(^|[^A-Za-z0-9_/-]){re.escape(cmd)}($|[^A-Za-z0-9_-])", text):
             candidates.append(cmd)
     if "google.cloud.translate_v2" in text:
@@ -1351,7 +1369,11 @@ def classify_block4(path: str, text: str, raw_row: dict[str, str], warnings: lis
     semantic_automation_type = "support tool"
     semantic_runtime = "host"
     semantic_confidence = "source_contract_high"
-    confirmation_gate = "yes" if has_typed_confirmation(text, lines) or actual_confirmation_gate(text, lines) else "no"
+    confirmation_gate = "yes" if (
+        has_typed_confirmation(text, lines)
+        or actual_confirmation_gate(text, lines)
+        or (("CONFIRM_TOKEN" in text or "CONFIRM=" in text) and "read -r" in text)
+    ) else "no"
     side_effect_class = "source_read_only_analysis"
     entrypoint_style = "cli"
     argument_contract = "script-specific CLI arguments"
@@ -1611,6 +1633,395 @@ def classify_block4(path: str, text: str, raw_row: dict[str, str], warnings: lis
             warnings.append("weak or missing typed confirmation for high-risk media workflow")
 
     summary = block4_summary(path, semantic_entity_type, text)
+
+    return {
+        "semantic_entity_type": semantic_entity_type,
+        "semantic_runtime": semantic_runtime,
+        "semantic_automation_type": semantic_automation_type,
+        "semantic_confidence": semantic_confidence,
+        "confirmation_gate": confirmation_gate,
+        "side_effect_class": side_effect_class,
+        "entrypoint_style": entrypoint_style,
+        "argument_contract": argument_contract,
+        "summary": summary,
+    }
+
+def block5_summary(path: str, semantic_entity_type: str, text: str) -> str:
+    name = Path(path).name
+    explicit = {
+        "apply-stockhausen-batch-normalization-1967-79.sh": "Approval-gated Stockhausen batch normalization workflow that writes FLAC metadata and may rename files in the 1967-79 corpus.",
+        "apply-stockhausen-batch-normalization-safe.sh": "Generic approval-gated Stockhausen batch apply helper that writes metadata and may rename files from a supplied plan.",
+        "apply-stockhausen-gold-normalization.sh": "Approval-gated gold model apply workflow for the Stimmung reference album, including tag writes and file renames.",
+        "apply-stockhausen-import-050.sh": "Approval-gated import workflow for Stockhausen 050 Freitag aus Licht, with library import and metadata application.",
+        "build-stockhausen-artwork-cold-archive.sh": "Builds Stockhausen artwork cold archive artifacts from prior artwork archive plans.",
+        "build-stockhausen-final-freeze-snapshot.sh": "Builds a final freeze snapshot of Stockhausen file and metadata state.",
+        "purge-stockhausen-hot-artwork.sh": "Approval-gated destructive purge workflow for hot-layer Stockhausen Artwork directories after cold archive validation.",
+        "stockhausen-verlag-finalize-import.sh": "Legacy finalize/import workflow that moves Stockhausen-Verlag artwork, images, documents, and split files into library structure.",
+        "resume-stockhausen-local-normalization-1977-95.sh": "Resume workflow for local Stockhausen normalization that can write metadata based on prior plan state.",
+        "repair-stockhausen-batch-composer-grouping-1967-79.sh": "Direct repair workflow for Stockhausen composer and grouping metadata in the 1967-79 corpus.",
+        "repair-stockhausen-performer-fix-1977-95.sh": "Direct performer repair workflow for selected Stockhausen 1977-95 material.",
+    }
+    if name in explicit:
+        return explicit[name]
+    if name.startswith("extract-"):
+        return "Extracts Stockhausen reference or gold-model metadata/artwork evidence without applying changes."
+    if name.startswith("analyze-"):
+        return "Analyzes Stockhausen library, artwork, import, quality, or reconciliation state and writes evidence."
+    if name.startswith("diagnose-"):
+        return "Runs a read-oriented Stockhausen diagnostic and writes report/TSV evidence."
+    if name.startswith("plan-"):
+        return "Generates a Stockhausen plan TSV/report without applying metadata, import, archive, or purge changes."
+    if name.startswith("validate-"):
+        return "Validates prior Stockhausen workflow evidence or current source-body targets without applying changes."
+    if name.startswith("filter-"):
+        return "Filters Stockhausen plan evidence into a narrower follow-up artifact."
+    if name.startswith("scan-"):
+        return "Scans Stockhausen metadata patterns and writes report/TSV evidence."
+    if name.endswith("-audit.sh"):
+        return "Audits Stockhausen workflow or import state and reports findings."
+    return first_comment_summary(text)
+
+def classify_block5(path: str, text: str, raw_row: dict[str, str], warnings: list[str], implemented: list[str], relation_types: list[str], relation_targets: list[str], relation_basis: list[str], reads_paths: list[str], writes_paths: list[str], evidence_outputs: list[str]) -> dict[str, str] | None:
+    name = Path(path).name
+    lines = executable_lines(text)
+    exec_text = "\n".join(lines)
+    compact_exec = re.sub(r"\\\n\s*", " ", exec_text)
+
+    if not path.startswith("scripts/media/stockhausen/"):
+        return None
+
+    semantic_entity_type = "stockhausen_support_tool"
+    semantic_automation_type = "support tool"
+    semantic_runtime = "host"
+    semantic_confidence = "source_contract_high"
+    confirmation_gate = "yes" if (
+        has_typed_confirmation(text, lines)
+        or actual_confirmation_gate(text, lines)
+        or (("CONFIRM_TOKEN" in text or "CONFIRM=" in text) and "read -r" in text)
+    ) else "no"
+    side_effect_class = "source_read_only_analysis"
+    entrypoint_style = "cli"
+    argument_contract = "script-specific CLI arguments"
+    high_risk = False
+    historical_one_off = False
+
+    def add_relation(kind: str, target: str, basis: str) -> None:
+        relation_types.append(kind)
+        relation_targets.append(target)
+        relation_basis.append(basis)
+
+    def add_evidence(kind: str, target: str, basis: str, evidence: str) -> None:
+        writes_paths.append(target)
+        evidence_outputs.append(evidence)
+        add_relation(kind, target, basis)
+
+    if name.startswith("extract-"):
+        semantic_entity_type = "stockhausen_gold_model_extractor" if "gold" in name else "stockhausen_analysis"
+        semantic_automation_type = "analysis"
+        implemented.append("stockhausen_reference_extraction")
+    elif name.startswith("analyze-stockhausen-import"):
+        semantic_entity_type = "stockhausen_import_analysis"
+        semantic_automation_type = "analysis"
+        implemented.append("stockhausen_import_analysis")
+    elif name.startswith("analyze-"):
+        semantic_entity_type = "stockhausen_analysis"
+        semantic_automation_type = "analysis"
+        implemented.append("stockhausen_analysis")
+    elif name == "diagnose-stockhausen-navidrome-album-count.sh":
+        semantic_entity_type = "stockhausen_navidrome_diagnostic"
+        semantic_automation_type = "diagnostic"
+        implemented.append("stockhausen_navidrome_diagnostic")
+    elif name.startswith("diagnose-stockhausen-import"):
+        semantic_entity_type = "stockhausen_import_analysis"
+        semantic_automation_type = "diagnostic"
+        implemented.append("stockhausen_import_diagnostic")
+    elif name.startswith("diagnose-"):
+        semantic_entity_type = "stockhausen_diagnostic"
+        semantic_automation_type = "diagnostic"
+        implemented.append("stockhausen_diagnostic")
+    elif name.startswith("plan-stockhausen-gold"):
+        semantic_entity_type = "stockhausen_gold_model_plan"
+        semantic_automation_type = "plan"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_gold_model_plan")
+    elif name.startswith("apply-stockhausen-gold"):
+        semantic_entity_type = "stockhausen_gold_model_apply_workflow"
+        semantic_automation_type = "metadata apply workflow"
+        implemented.append("stockhausen_gold_model_apply_workflow")
+    elif name.startswith("validate-stockhausen-gold"):
+        semantic_entity_type = "stockhausen_gold_model_validator"
+        semantic_automation_type = "validator"
+        side_effect_class = "validation_read_only"
+        implemented.append("stockhausen_gold_model_validator")
+    elif name.startswith("plan-stockhausen-batch"):
+        semantic_entity_type = "stockhausen_batch_normalization_plan"
+        semantic_automation_type = "plan"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_batch_normalization_plan")
+    elif name.startswith("apply-stockhausen-batch"):
+        semantic_entity_type = "stockhausen_batch_normalization_apply_workflow"
+        semantic_automation_type = "metadata apply workflow"
+        implemented.append("stockhausen_batch_normalization_apply_workflow")
+    elif name.startswith("validate-stockhausen-batch") or name.startswith("validate-stockhausen-final"):
+        semantic_entity_type = "stockhausen_batch_normalization_validator"
+        semantic_automation_type = "validator"
+        side_effect_class = "validation_read_only"
+        implemented.append("stockhausen_batch_normalization_validator")
+    elif name.startswith("plan-stockhausen-local"):
+        semantic_entity_type = "stockhausen_local_normalization_plan"
+        semantic_automation_type = "plan"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_local_normalization_plan")
+    elif name.startswith("resume-stockhausen-local"):
+        semantic_entity_type = "stockhausen_local_normalization_resume_workflow"
+        semantic_automation_type = "metadata apply workflow"
+        implemented.append("stockhausen_local_normalization_resume_workflow")
+        historical_one_off = True
+    elif name.startswith("validate-stockhausen-local"):
+        semantic_entity_type = "stockhausen_local_normalization_validator"
+        semantic_automation_type = "validator"
+        side_effect_class = "validation_read_only"
+        implemented.append("stockhausen_local_normalization_validator")
+    elif name.startswith("plan-stockhausen-performer"):
+        semantic_entity_type = "stockhausen_performer_repair_plan"
+        semantic_automation_type = "plan"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_performer_repair_plan")
+    elif name.startswith("repair-stockhausen-performer"):
+        semantic_entity_type = "stockhausen_performer_repair_workflow"
+        semantic_automation_type = "metadata repair workflow"
+        implemented.append("stockhausen_performer_repair_workflow")
+        historical_one_off = True
+    elif name.startswith("repair-"):
+        semantic_entity_type = "stockhausen_batch_normalization_apply_workflow"
+        semantic_automation_type = "metadata repair workflow"
+        implemented.append("stockhausen_metadata_repair_workflow")
+        historical_one_off = True
+    elif name.startswith("validate-stockhausen-performer"):
+        semantic_entity_type = "stockhausen_performer_repair_validator"
+        semantic_automation_type = "validator"
+        side_effect_class = "validation_read_only"
+        implemented.append("stockhausen_performer_repair_validator")
+    elif name.startswith("plan-stockhausen-import"):
+        semantic_entity_type = "stockhausen_import_plan"
+        semantic_automation_type = "plan"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_import_plan")
+    elif name.startswith("apply-stockhausen-import"):
+        semantic_entity_type = "stockhausen_import_apply_workflow"
+        semantic_automation_type = "import apply workflow"
+        implemented.append("stockhausen_import_apply_workflow")
+    elif name.startswith("validate-stockhausen-import"):
+        semantic_entity_type = "stockhausen_import_validator"
+        semantic_automation_type = "validator"
+        side_effect_class = "validation_read_only"
+        implemented.append("stockhausen_import_validator")
+    elif name.startswith("split-stockhausen-import"):
+        semantic_entity_type = "stockhausen_import_apply_workflow"
+        semantic_automation_type = "import apply workflow"
+        implemented.append("stockhausen_import_split_workflow")
+        historical_one_off = True
+    elif name.startswith("plan-stockhausen-artwork"):
+        semantic_entity_type = "stockhausen_artwork_archive_plan"
+        semantic_automation_type = "plan"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_artwork_archive_plan")
+    elif name.startswith("build-stockhausen-artwork"):
+        semantic_entity_type = "stockhausen_artwork_archive_build_workflow"
+        semantic_automation_type = "artwork archive build workflow"
+        implemented.append("stockhausen_artwork_archive_build_workflow")
+    elif name.startswith("validate-stockhausen-artwork"):
+        semantic_entity_type = "stockhausen_artwork_archive_validator"
+        semantic_automation_type = "validator"
+        side_effect_class = "validation_read_only"
+        implemented.append("stockhausen_artwork_archive_validator")
+    elif name.startswith("purge-stockhausen-hot-artwork"):
+        semantic_entity_type = "stockhausen_hot_artwork_purge_workflow"
+        semantic_automation_type = "hot artwork purge workflow"
+        implemented.append("stockhausen_hot_artwork_purge_workflow")
+        historical_one_off = True
+    elif name.startswith("build-stockhausen-final-freeze"):
+        semantic_entity_type = "stockhausen_final_freeze_snapshot"
+        semantic_automation_type = "final freeze snapshot"
+        side_effect_class = "snapshot_generation_candidate"
+        implemented.append("stockhausen_final_freeze_snapshot")
+    elif name.startswith("filter-"):
+        semantic_entity_type = "stockhausen_filter_tool"
+        semantic_automation_type = "filter tool"
+        side_effect_class = "plan_generation_only"
+        implemented.append("stockhausen_filter_tool")
+    elif name.endswith("-audit.sh"):
+        semantic_entity_type = "stockhausen_audit"
+        semantic_automation_type = "audit"
+        implemented.append("stockhausen_audit")
+    elif name == "stockhausen-verlag-finalize-import.sh":
+        semantic_entity_type = "stockhausen_finalize_import_workflow"
+        semantic_automation_type = "import apply workflow"
+        implemented.append("stockhausen_finalize_import_workflow")
+        historical_one_off = True
+    elif name.startswith("scan-"):
+        semantic_entity_type = "stockhausen_analysis"
+        semantic_automation_type = "analysis"
+        implemented.append("stockhausen_metadata_scan")
+
+    if "/srv/media/music/Karlheinz Stockhausen" in text:
+        reads_paths.append("/srv/media/music/Karlheinz Stockhausen")
+        add_relation("reads_stockhausen_library_candidate", "/srv/media/music/Karlheinz Stockhausen", "source_body_stockhausen_library_path")
+    if "/srv/media/music-staging" in text:
+        reads_paths.append("/srv/media/music-staging")
+        add_relation("reads_stockhausen_staging_candidate", "/srv/media/music-staging", "source_body_stockhausen_staging_path")
+    if "PLAN_TSV" in text or "_plan_" in text:
+        add_relation("reads_stockhausen_plan_tsv", "Stockhausen plan TSV", "source_body_plan_tsv_reference")
+    if "APPLY_TSV" in text or "_apply_" in text:
+        add_relation("reads_stockhausen_apply_tsv", "Stockhausen apply TSV", "source_body_apply_tsv_reference")
+
+    if "/srv/toolbox/shared/reports/media/stockhausen" in text:
+        add_evidence("writes_stockhausen_report", "/srv/toolbox/shared/reports/media/stockhausen", "source_body_stockhausen_report_output", "Stockhausen report")
+    elif "/srv/toolbox/shared/reports/media" in text or 'REPORT_DIR="/srv/toolbox/shared/reports/media"' in text:
+        add_evidence("writes_stockhausen_report", "/srv/toolbox/shared/reports/media", "source_body_broad_media_report_output", "Stockhausen report")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/reports/media", "source_body_broad_media_report_destination")
+        warnings.append("historical/provisional destination: /srv/toolbox/shared/reports/media")
+    if "/srv/toolbox/shared/library-db/raw/media/stockhausen" in text:
+        add_evidence("writes_stockhausen_tsv", "/srv/toolbox/shared/library-db/raw/media/stockhausen", "source_body_stockhausen_raw_output", "Stockhausen TSV")
+    elif "/srv/toolbox/shared/library-db/raw" in text or 'RAW_DIR="/srv/toolbox/shared/library-db/raw"' in text:
+        add_evidence("writes_stockhausen_tsv", "/srv/toolbox/shared/library-db/raw", "source_body_broad_raw_output", "Stockhausen TSV")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/library-db/raw", "source_body_broad_raw_destination")
+        warnings.append("historical/provisional destination: /srv/toolbox/shared/library-db/raw")
+    if "/srv/toolbox/shared/library-db/snapshots" in text:
+        add_evidence("writes_stockhausen_snapshot", "/srv/toolbox/shared/library-db/snapshots", "source_body_snapshot_output", "Stockhausen snapshot")
+        add_relation("uses_legacy_or_provisional_destination", "/srv/toolbox/shared/library-db/snapshots", "source_body_broad_snapshot_destination")
+    if "/srv/toolbox/shared/artwork-cold-archive/stockhausen" in text:
+        writes_paths.append("/srv/toolbox/shared/artwork-cold-archive/stockhausen")
+        add_relation("writes_cold_archive_candidate", "/srv/toolbox/shared/artwork-cold-archive/stockhausen", "source_body_cold_archive_path")
+    if "$HOME/Música" in text or "relatorios-limpeza" in text:
+        writes_paths.append("$HOME/Música/.../relatorios-limpeza")
+        add_relation("uses_legacy_or_provisional_destination", "$HOME/Música/.../relatorios-limpeza", "source_body_home_report_destination")
+        warnings.append("home-directory report destination: $HOME/Música/.../relatorios-limpeza")
+
+    if "docs/media/stockhausen_metadata_policy.md" in text or "Karlheinz Stockhausen" in text:
+        add_relation("uses_stockhausen_metadata_policy", "docs/media/stockhausen_metadata_policy.md", "source_body_stockhausen_policy_reference")
+    if "Stimmung" in text or "GOLD_ALBUM" in text or "gold" in name:
+        add_relation("uses_gold_model_policy", "docs/media/stockhausen_gold_model_stimmung.md", "source_body_gold_model_reference")
+    if "Navidrome" in text or "navidrome" in text.lower():
+        add_relation("checks_navidrome_album_count_candidate", "Navidrome", "source_body_navidrome_reference")
+
+    if "metaflac" in exec_text:
+        add_relation("uses_metaflac", "metaflac", "source_body_metaflac_command")
+    if "exiftool" in exec_text:
+        add_relation("uses_exiftool", "exiftool", "source_body_exiftool_command")
+    if "ffprobe" in exec_text:
+        add_relation("uses_ffprobe", "ffprobe", "source_body_ffprobe_command")
+    if "python3" in exec_text:
+        add_relation("uses_python3", "python3", "source_body_python3_command")
+    if re.search(r"(^|[;&|(){}\s])7z\s+", exec_text):
+        add_relation("uses_7z", "7z", "source_body_7z_command")
+
+    metadata_write = any(
+        "metaflac" in line
+        and ("--remove-tag" in line or "--set-tag" in line)
+        and "--show-tag" not in line
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    ) or (
+        semantic_automation_type in {"metadata apply workflow", "metadata repair workflow", "import apply workflow"}
+        and "metaflac" in text
+        and "--set-tag" in text
+    )
+    media_rename = any(
+        re.search(r"(^|[;&|(){}\s])mv\s+", line)
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    )
+    media_import = any(
+        (
+            re.search(r"(^|[;&|(){}\s])cp\s+", line)
+            or "shutil.copy" in line
+            or (
+                re.search(r"(^|[;&|(){}\s])mv\s+", line)
+                and "/srv/media/music-staging" in text
+            )
+        )
+        and "/srv/media/music" in text
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    ) or (
+        semantic_entity_type == "stockhausen_import_apply_workflow"
+        and "/srv/media/music-staging" in text
+        and "/srv/media/music" in text
+        and ("shutil.copy" in text or re.search(r"(^|\n)\s*(cp|mv)\s+", text))
+    )
+    archive_build = any(
+        re.search(r"(^|[;&|(){}\s])7z\s+a\b", line)
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    )
+    archive_validate = any(
+        re.search(r"(^|[;&|(){}\s])7z\s+t\b", line)
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    )
+    artwork_purge = any(
+        re.search(r"(^|[;&|(){}\s])rm\s+-rf\s+", line)
+        and ("Artwork" in text or "artwork" in text.lower())
+        and not line_is_weak_text_writer(line)
+        for line in lines
+    )
+
+    if metadata_write:
+        add_relation("writes_flac_metadata_candidate", "Stockhausen FLAC metadata", "source_body_metaflac_set_remove_tag")
+        add_relation("repairs_stockhausen_metadata_candidate", "Stockhausen metadata", "source_body_metadata_write_or_repair")
+        warnings.append("FLAC metadata write candidate")
+        high_risk = True
+    if media_rename:
+        add_relation("renames_media_file_candidate", "Stockhausen media files", "source_body_mv_command")
+        warnings.append("media rename/move candidate")
+        high_risk = True
+    if media_import:
+        add_relation("imports_stockhausen_release_candidate", "/srv/media/music/Karlheinz Stockhausen", "source_body_library_import_move_or_copy")
+        warnings.append("library import candidate")
+        high_risk = True
+    if archive_build:
+        add_relation("writes_cold_archive_candidate", "/srv/toolbox/shared/artwork-cold-archive/stockhausen", "source_body_7z_archive_build")
+        warnings.append("archive_build_candidate")
+        side_effect_class = "approval_required_artwork_archive_build_candidate"
+    if archive_validate:
+        add_relation("validates_cold_archive_candidate", "/srv/toolbox/shared/artwork-cold-archive/stockhausen", "source_body_7z_archive_test")
+    if artwork_purge:
+        add_relation("purges_hot_artwork_candidate", "Stockhausen hot Artwork directories", "source_body_rm_rf_artwork")
+        warnings.append("DESTRUCTIVE hot artwork purge candidate")
+        high_risk = True
+
+    if semantic_entity_type == "stockhausen_finalize_import_workflow":
+        add_relation("imports_stockhausen_release_candidate", "/srv/media/music/Karlheinz Stockhausen", "source_body_finalize_import_workflow")
+        warnings.append("finalize import candidate")
+        high_risk = True
+    if historical_one_off or name in {"stockhausen-verlag-finalize-import.sh", "stockhausen-verlag-audit.sh"}:
+        implemented.append("historical_one_off_candidate")
+        warnings.append("historical_one_off_candidate")
+
+    if high_risk:
+        if side_effect_class == "source_read_only_analysis":
+            side_effect_class = "approval_required_metadata_write_candidate"
+        if media_import:
+            side_effect_class = "approval_required_import_candidate"
+        if artwork_purge:
+            side_effect_class = "approval_required_hot_artwork_purge_candidate"
+        if semantic_entity_type == "stockhausen_finalize_import_workflow":
+            side_effect_class = "approval_required_finalize_import_candidate"
+        if confirmation_gate == "yes":
+            add_relation("requires_confirmation", "operator confirmation", "source_body_typed_confirmation")
+        else:
+            add_relation("missing_or_weak_confirmation_candidate", "operator confirmation", "source_body_high_risk_without_typed_confirmation")
+            warnings.append("missing or weak confirmation for high-risk Stockhausen workflow")
+
+    if semantic_entity_type.endswith("_validator") or semantic_automation_type == "validator":
+        side_effect_class = "validation_read_only"
+    elif semantic_automation_type == "analysis" or semantic_automation_type == "diagnostic":
+        side_effect_class = "source_read_only_analysis"
+    elif semantic_automation_type == "plan":
+        side_effect_class = "plan_generation_only"
+
+    summary = block5_summary(path, semantic_entity_type, text)
 
     return {
         "semantic_entity_type": semantic_entity_type,
@@ -1923,6 +2334,37 @@ def classify(path: str, text: str, exists: bool, raw_row: dict[str, str]) -> dic
             entrypoint_style = block4["entrypoint_style"]
             argument_contract = block4["argument_contract"]
             summary = block4["summary"]
+    elif path.startswith("scripts/media/stockhausen/"):
+        block5 = classify_block5(
+            path,
+            text,
+            raw_row,
+            warnings,
+            implemented,
+            relation_types,
+            relation_targets,
+            relation_basis,
+            reads_paths,
+            writes_paths,
+            evidence_outputs,
+        )
+        if block5 is None:
+            semantic_entity_type = path_type
+            semantic_runtime = "unknown"
+            semantic_automation_type = "unknown"
+            semantic_confidence = "static_hint_low"
+            warnings.append("no block5 semantic rule matched")
+            summary = first_comment_summary(text)
+        else:
+            semantic_entity_type = block5["semantic_entity_type"]
+            semantic_runtime = block5["semantic_runtime"]
+            semantic_automation_type = block5["semantic_automation_type"]
+            semantic_confidence = block5["semantic_confidence"]
+            confirmation_gate = block5["confirmation_gate"]
+            side_effect_class = block5["side_effect_class"]
+            entrypoint_style = block5["entrypoint_style"]
+            argument_contract = block5["argument_contract"]
+            summary = block5["summary"]
     elif path.startswith("scripts/admin/git/"):
         semantic_entity_type = "git_workflow"
         semantic_runtime = "host"
