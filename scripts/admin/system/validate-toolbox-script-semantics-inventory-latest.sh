@@ -91,7 +91,7 @@ validate_tsv_file() {
     printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
       "$TS" "$scope_slug" "$file_kind" "${path:-missing}" "missing" "missing" "fail" >> "$TSV"
     {
-      printf '- %s %s: missing\n' "$scope_slug" "$file_kind"
+      printf -- '- %s %s: missing\n' "$scope_slug" "$file_kind"
     } >> "$REPORT"
     return 1
   fi
@@ -115,7 +115,7 @@ validate_tsv_file() {
     "$TS" "$scope_slug" "$file_kind" "$path" "$expected_columns" "$bad_rows" "$status" >> "$TSV"
 
   {
-    printf '- %s %s: expected_columns=%s bad_rows=%s status=%s\n' \
+    printf -- '- %s %s: expected_columns=%s bad_rows=%s status=%s\n' \
       "$scope_slug" "$file_kind" "$expected_columns" "$bad_rows" "$status"
   } >> "$REPORT"
 
@@ -153,9 +153,9 @@ for slug in "${scopes[@]}"; do
 
     {
       printf 'Report totals:\n\n'
-      printf '- Total scoped rows: %s\n' "${total_rows:-unknown}"
-      printf '- Placeholder rows: %s\n' "${placeholder_rows:-unknown}"
-      printf '- Rows with warnings: %s\n' "${warning_rows:-unknown}"
+      printf -- '- Total scoped rows: %s\n' "${total_rows:-unknown}"
+      printf -- '- Placeholder rows: %s\n' "${placeholder_rows:-unknown}"
+      printf -- '- Rows with warnings: %s\n' "${warning_rows:-unknown}"
     } >> "$REPORT"
   else
     {
